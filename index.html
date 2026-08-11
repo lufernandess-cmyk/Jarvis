@@ -52,6 +52,11 @@
         .btn-login { background-color: #00F0FF; color: #000; }
         .btn-register { background-color: #1A1F2C; color: #00F0FF; border: 1px solid #00F0FF; }
         #auth-msg { color: #FF4444; font-size: 14px; }
+        .btn-dev {
+            background-color: transparent; color: #888; border: 1px dashed #888;
+            margin-top: 10px; font-size: 13px; font-weight: normal;
+        }
+        .btn-dev:hover { color: #00F0FF; border-color: #00F0FF; }
 
         /* ================= MENU LATERAL ================= */
         #overlay-menu {
@@ -142,7 +147,10 @@
             color: #FFFFFF; padding: 12px 16px; border-radius: 12px 12px 0 12px; max-width: 80%;
             word-wrap: break-word; line-height: 1.4;
         }
-        
+        .msg-user-wrapper {
+            align-self: flex-end; max-width: 85%; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;
+        }
+
         .msg-jarvis-wrapper {
             align-self: flex-start; max-width: 85%; display: flex; flex-direction: column; gap: 5px;
         }
@@ -164,18 +172,92 @@
         }
         .copy-btn {
             background: transparent; border: none; color: #00F0FF; cursor: pointer; font-size: 12px; font-weight: bold;
+            display: inline-flex; align-items: center; gap: 4px;
         }
         .code-block pre { padding: 10px; overflow-x: auto; font-family: monospace; font-size: 13px; color: #E2E8F0; margin: 0; }
         
         .msg-actions {
-            display: flex; gap: 10px; padding-left: 5px;
+            display: flex; gap: 14px; padding-left: 5px;
         }
         .action-btn {
             background: transparent; border: none; color: #888; cursor: pointer; font-size: 12px;
+            display: inline-flex; align-items: center; gap: 4px;
         }
         .action-btn:hover { color: #00F0FF; }
 
         #preview-container { color: #00F0FF; font-size: 12px; text-align: center; margin-bottom: 5px; display: none; }
+
+        /* ================= PAINEL GERENCIAR MEMÓRIAS ================= */
+        #overlay-memorias {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100vh;
+            background: rgba(0,0,0,0.65);
+            z-index: 200;
+        }
+        #painel-memorias {
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; right: -100%;
+            width: 100%;
+            max-width: 380px;
+            height: 100vh;
+            background-color: #10141D;
+            border-left: 1px solid #00F0FF33;
+            z-index: 201;
+            transition: right 0.3s ease;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.5);
+        }
+        .painel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 18px 15px; border-bottom: 1px solid #00F0FF33;
+        }
+        .painel-titulo { color: #00F0FF; font-weight: bold; letter-spacing: 1px; font-size: 15px; }
+        .painel-fechar { background: transparent; border: none; color: #888; font-size: 24px; cursor: pointer; line-height: 1; }
+        .lista-memorias { flex-grow: 1; overflow-y: auto; padding: 12px 15px; }
+        .memoria-item {
+            background: #1A1F2C; border: 1px solid #00F0FF22; border-radius: 8px;
+            padding: 10px 12px; margin-bottom: 10px; font-size: 13px; line-height: 1.4;
+        }
+        .memoria-role {
+            color: #00F0FF; font-size: 11px; font-weight: bold; text-transform: uppercase;
+            letter-spacing: 1px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .memoria-texto {
+            color: #E2E8F0; white-space: pre-wrap; word-wrap: break-word;
+            max-height: 100px; overflow-y: auto;
+        }
+        .btn-del-memoria {
+            background: transparent; border: none; color: #FF4444; cursor: pointer; font-size: 11px;
+            display: inline-flex; align-items: center; gap: 3px;
+        }
+        .memoria-vazio { color: #888; text-align: center; padding: 40px 10px; font-size: 14px; }
+        .painel-footer { padding: 15px; border-top: 1px solid #00F0FF33; }
+        #overlay-config {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100vh;
+            background: rgba(0,0,0,0.65);
+            z-index: 200;
+        }
+        #painel-config {
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; right: -100%;
+            width: 100%;
+            max-width: 380px;
+            height: 100vh;
+            background-color: #10141D;
+            border-left: 1px solid #00F0FF33;
+            z-index: 201;
+            transition: right 0.3s ease;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.5);
+        }
+        .btn-apagar-tudo {
+            width: 100%; justify-content: center; border: 1px solid #FF444455; border-radius: 8px; padding: 12px;
+        }
 
         /* ================= INPUT ================= */
         .input-wrapper {
@@ -261,6 +343,7 @@
         <button class="btn-login" onclick="login()">ACESSAR</button>
         <button class="btn-register" onclick="registrar()">CADASTRAR USUÁRIO</button>
         <p id="auth-msg"></p>
+        <button class="btn-dev" onclick="modoDesenvolvedor()">🛠️ Modo Desenvolvedor</button>
     </div>
 
     <div id="overlay-menu" onclick="fecharMenu()"></div>
@@ -270,11 +353,44 @@
         <!-- Novos botões base de assistente de IA -->
         <button class="menu-btn-item" id="btn-toggle-voz" onclick="toggleVoz()">🔊 Resposta por Voz: LIGADA</button>
         <button class="menu-btn-item" onclick="location.reload()">🔄 Recarregar Página</button>
+        <button class="menu-btn-item" onclick="abrirGerenciarMemorias()">🧠 Gerenciar Memórias</button>
         
         <button class="menu-btn-item" onclick="abrirConfig()">⚙️ Configurações</button>
         <button class="menu-btn-item menu-btn-danger" onclick="confirmarLimpeza()">🗑️ Resetar Memória</button>
         <div style="flex-grow: 1;"></div>
         <button class="menu-btn-item" style="border-top: 1px solid #00F0FF33;" onclick="fazerLogout()">🚪 Sair</button>
+    </div>
+
+    <div id="overlay-memorias" onclick="fecharGerenciarMemorias()"></div>
+    <div id="painel-memorias">
+        <div class="painel-header">
+            <span class="painel-titulo">GERENCIAR MEMÓRIAS</span>
+            <button class="painel-fechar" onclick="fecharGerenciarMemorias()">×</button>
+        </div>
+        <div class="lista-memorias">
+            <p style="color:#888; font-size:12px; line-height:1.5; margin-bottom:16px;">
+                Aqui você guarda informações permanentes que o J.A.R.V.I.S. vai sempre lembrar sobre você — não é o histórico da conversa.
+            </p>
+            <div id="lista-fatos"></div>
+        </div>
+        <div class="painel-footer" style="display:flex; gap:8px;">
+            <input type="text" id="novo-fato" placeholder="Ex: Meu time é o Flamengo" onkeypress="if(event.key==='Enter')adicionarFato()" style="flex-grow:1; padding:11px; border-radius:8px; border:1px solid #00F0FF44; background:#1A1F2C; color:#FFF; outline:none; font-size:13px;">
+            <button class="icon-btn-pill" style="background:#1a3673; border-radius:8px; width:44px;" onclick="adicionarFato()">+</button>
+        </div>
+    </div>
+
+    <div id="overlay-config" onclick="fecharConfig()"></div>
+    <div id="painel-config">
+        <div class="painel-header">
+            <span class="painel-titulo">CONFIGURAÇÕES</span>
+            <button class="painel-fechar" onclick="fecharConfig()">×</button>
+        </div>
+        <div class="lista-memorias">
+            <p style="color:#888; font-size:13px; line-height:1.5; margin-bottom:20px;">
+                A opção abaixo apaga TODOS os dados salvos deste app neste navegador: usuários cadastrados, memórias de conversa e preferências. Você será desconectado e voltará à tela de login.
+            </p>
+            <button class="menu-btn-item menu-btn-danger btn-apagar-tudo" onclick="confirmarApagarTudo()">🧨 Apagar Todos os Dados Salvos</button>
+        </div>
     </div>
 
     <div id="app-container">
@@ -298,14 +414,24 @@
                     <svg width="20" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
                 </button>
                 
-                <button class="btn-send-pill" onclick="enviarMensagem()">ılı</button>
+                <button class="btn-send-pill" onclick="enviarMensagem()">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
             </div>
         </div>
     </div>
 
     <script>
         const API_KEY = "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"; 
-        
+
+        // =============== ÍCONES (SVG) ===============
+        const ICON_COPY = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        const ICON_CHECK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        const ICON_REGEN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>';
+        const ICON_RESEND = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
+        const ICON_TRASH = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+        const ICON_EDIT = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+
         // =============== CONTROLE DE VOZ ===============
         let vozAtivada = localStorage.getItem('jarvis_voz') !== 'false';
         atualizarTextoBotaoVoz();
@@ -329,7 +455,28 @@
             document.getElementById('sidebar').style.left = '-280px';
             setTimeout(() => { document.getElementById('overlay-menu').style.display = 'none'; }, 300);
         }
-        function abrirConfig() { alert("Em breve: Ajustes avançados."); fecharMenu(); }
+        function abrirConfig() {
+            document.getElementById('overlay-config').style.display = 'block';
+            setTimeout(() => { document.getElementById('painel-config').style.right = '0'; }, 10);
+            fecharMenu();
+        }
+        function fecharConfig() {
+            document.getElementById('painel-config').style.right = '-100%';
+            setTimeout(() => { document.getElementById('overlay-config').style.display = 'none'; }, 300);
+        }
+        function confirmarApagarTudo() {
+            if (confirm("Isso vai apagar TODOS os dados salvos deste app (usuários, memórias e preferências) e você será desconectado. Deseja continuar?")) {
+                apagarTodosDados();
+            }
+        }
+        function apagarTodosDados() {
+            localStorage.clear();
+            location.reload();
+        }
+        function modoDesenvolvedor() {
+            localStorage.setItem('currentUser', 'Desenvolvedor');
+            checkAuth();
+        }
         function fazerLogout() {
             if(confirm("Deseja realmente sair?")) {
                 localStorage.removeItem('currentUser');
@@ -340,7 +487,68 @@
             if(confirm("Aviso: Isso apagará toda a memória de conversas. Deseja continuar?")) {
                 limparMemoria();
                 fecharMenu();
+                fecharGerenciarMemorias();
             }
+        }
+
+        // =============== PAINEL GERENCIAR MEMÓRIAS (fatos permanentes) ===============
+        function abrirGerenciarMemorias() {
+            renderizarListaFatos();
+            document.getElementById('overlay-memorias').style.display = 'block';
+            setTimeout(() => { document.getElementById('painel-memorias').style.right = '0'; }, 10);
+            fecharMenu();
+        }
+        function fecharGerenciarMemorias() {
+            document.getElementById('painel-memorias').style.right = '-100%';
+            setTimeout(() => { document.getElementById('overlay-memorias').style.display = 'none'; }, 300);
+        }
+        function renderizarListaFatos() {
+            const lista = document.getElementById('lista-fatos');
+            lista.innerHTML = '';
+            if (fatosMemoria.length === 0) {
+                lista.innerHTML = '<div class="memoria-vazio">Nenhuma memória permanente ainda.<br>Adicione uma abaixo.</div>';
+                return;
+            }
+            fatosMemoria.forEach((fato, idx) => {
+                const textoEscapado = fato.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                lista.innerHTML += `
+                    <div class="memoria-item">
+                        <div class="memoria-texto">${textoEscapado}</div>
+                        <div class="memoria-role" style="margin-top:8px; margin-bottom:0; justify-content:flex-end; gap:16px;">
+                            <button class="btn-del-memoria" style="color:#00F0FF;" onclick="editarFato(${idx})">${ICON_EDIT} Editar</button>
+                            <button class="btn-del-memoria" onclick="excluirFato(${idx})">${ICON_TRASH} Excluir</button>
+                        </div>
+                    </div>`;
+            });
+        }
+        function adicionarFato() {
+            const campo = document.getElementById('novo-fato');
+            const texto = campo.value.trim();
+            if (!texto) return;
+            fatosMemoria.push(texto);
+            salvarFatos();
+            atualizarSystemPrompt();
+            campo.value = '';
+            renderizarListaFatos();
+        }
+        function editarFato(idx) {
+            const atual = fatosMemoria[idx];
+            if (atual === undefined) return;
+            const novo = prompt('Editar memória:', atual);
+            if (novo === null) return;
+            const textoNovo = novo.trim();
+            if (!textoNovo) return;
+            fatosMemoria[idx] = textoNovo;
+            salvarFatos();
+            atualizarSystemPrompt();
+            renderizarListaFatos();
+        }
+        function excluirFato(idx) {
+            if (!confirm("Excluir esta memória?")) return;
+            fatosMemoria.splice(idx, 1);
+            salvarFatos();
+            atualizarSystemPrompt();
+            renderizarListaFatos();
         }
 
         // =============== SISTEMA DE USUÁRIOS ===============
@@ -382,20 +590,52 @@
         // =============== MEMÓRIA ===============
         let historico = [];
         let systemPrompt = {};
+        let fatosMemoria = [];
+
+        function montarConteudoSystemPrompt(user) {
+            let base = `Você é o J.A.R.V.I.S., assistente criado por Tony Stark. O usuário atual que você está atendendo se chama ${user}. Responda de forma direta e polida. Você suporta Markdown, então use marcações como negrito (**texto**) e blocos de código quando necessário.`;
+            if (fatosMemoria.length > 0) {
+                base += `\n\nInformações permanentes que você deve sempre lembrar sobre este usuário, mesmo que não estejam na conversa atual:\n` + fatosMemoria.map(f => `- ${f}`).join('\n');
+            }
+            return base;
+        }
+
+        function carregarFatos(user) {
+            const salvos = localStorage.getItem('fatos_' + user);
+            fatosMemoria = salvos ? JSON.parse(salvos) : [];
+        }
+        function salvarFatos() {
+            const user = localStorage.getItem('currentUser');
+            localStorage.setItem('fatos_' + user, JSON.stringify(fatosMemoria));
+        }
+        // Atualiza o system prompt (com os fatos atuais) e propaga para o histórico salvo
+        function atualizarSystemPrompt() {
+            const user = localStorage.getItem('currentUser');
+            systemPrompt = { role: "system", content: montarConteudoSystemPrompt(user) };
+            if (historico.length > 0) {
+                historico[0] = systemPrompt;
+            } else {
+                historico = [systemPrompt];
+            }
+            salvarMemoria();
+        }
 
         function carregarMemoria(user) {
-            systemPrompt = { 
-                role: "system", 
-                content: `Você é o J.A.R.V.I.S., assistente criado por Tony Stark. O usuário atual que você está atendendo se chama ${user}. Responda de forma direta e polida. Você suporta Markdown, então use marcações como negrito (**texto**) e blocos de código quando necessário.` 
-            };
+            carregarFatos(user);
+            systemPrompt = { role: "system", content: montarConteudoSystemPrompt(user) };
             const salva = localStorage.getItem('memoria_' + user);
             if (salva) {
                 historico = JSON.parse(salva);
+                historico[0] = systemPrompt; // garante que fatos editados valham mesmo em conversas antigas
+                salvarMemoria();
                 renderizarChat();
             } else {
                 historico = [systemPrompt];
-                adicionarChat("jarvis", `Sistemas operacionais, Senhor ${user}.`);
-                falarJarvis(`Sistemas operacionais, Senhor ${user}.`);
+                const saudacao = "Olá Senhor Lucas, como posso ajudar?";
+                historico.push({ role: "assistant", content: saudacao });
+                salvarMemoria();
+                adicionarChat("jarvis", saudacao, historico.length - 1);
+                falarJarvis(saudacao);
             }
         }
         function salvarMemoria() {
@@ -404,17 +644,19 @@
         }
         function limparMemoria() {
             historico = [systemPrompt];
+            const msg = "Memória apagada. O que deseja agora?";
+            historico.push({ role: "assistant", content: msg });
             salvarMemoria();
             document.getElementById('chat').innerHTML = '';
-            adicionarChat("jarvis", "Memória apagada. O que deseja agora?");
+            adicionarChat("jarvis", msg, historico.length - 1);
         }
 
         function renderizarChat() {
             const chat = document.getElementById('chat');
             chat.innerHTML = '';
-            historico.forEach(msg => {
-                if (msg.role === 'user') adicionarChat('user', msg.content);
-                if (msg.role === 'assistant') adicionarChat('jarvis', msg.content);
+            historico.forEach((msg, idx) => {
+                if (msg.role === 'user') adicionarChat('user', msg.content, idx);
+                if (msg.role === 'assistant') adicionarChat('jarvis', msg.content, idx);
             });
         }
 
@@ -426,13 +668,12 @@
             text = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             
             // Detecta blocos de código: ```linguagem ...código... ```
-            text = text.replace(/```(.*?)
-([\s\S]*?)```/g, function(match, lang, code) {
+            text = text.replace(/```(.*?)\n([\s\S]*?)```/g, function(match, lang, code) {
                 const linguagem = lang.trim() || "código";
                 return `<div class="code-block">
                             <div class="code-block-header">
                                 <span>${linguagem}</span>
-                                <button class="copy-btn" onclick="copiarTexto(this, \`${code.replace(/`/g, '\`')}\`)">Copiar</button>
+                                <button class="copy-btn" onclick="copiarTexto(this, \`${code.replace(/`/g, '\\`')}\`)">${ICON_COPY} Copiar</button>
                             </div>
                             <pre><code>${code}</code></pre>
                         </div>`;
@@ -443,7 +684,7 @@
                 return `<div class="code-block">
                             <div class="code-block-header">
                                 <span>código</span>
-                                <button class="copy-btn" onclick="copiarTexto(this, \`${code.replace(/`/g, '\`')}\`)">Copiar</button>
+                                <button class="copy-btn" onclick="copiarTexto(this, \`${code.replace(/`/g, '\\`')}\`)">${ICON_COPY} Copiar</button>
                             </div>
                             <pre><code>${code}</code></pre>
                         </div>`;
@@ -454,45 +695,51 @@
             text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
             
             // Quebra de linha simples
-            text = text.replace(/
-/g, '<br>');
+            text = text.replace(/\n/g, '<br>');
             
             return text;
         }
 
         function copiarTexto(botao, texto) {
             navigator.clipboard.writeText(texto).then(() => {
-                const textoOriginal = botao.innerText;
-                botao.innerText = 'Copiado!';
-                setTimeout(() => { botao.innerText = textoOriginal; }, 2000);
+                const original = botao.innerHTML;
+                botao.innerHTML = ICON_CHECK + ' Copiado!';
+                setTimeout(() => { botao.innerHTML = original; }, 2000);
             });
         }
         
         function copiarMensagemCompleta(botao, textoMensagem) {
             navigator.clipboard.writeText(textoMensagem).then(() => {
-                botao.innerText = '✓ Copiado';
-                setTimeout(() => { botao.innerText = '📋 Copiar Mensagem'; }, 2000);
+                const original = botao.innerHTML;
+                botao.innerHTML = ICON_CHECK;
+                setTimeout(() => { botao.innerHTML = original; }, 2000);
             });
         }
 
-        function adicionarChat(remetente, texto) {
+        function adicionarChat(remetente, texto, idx) {
             const chat = document.getElementById('chat');
             
             if (remetente === 'jarvis') {
                 const textoMarkdown = parseMarkdown(texto);
                 // Armazenar o texto original de forma segura para o botão de copiar
-                const textoEscapado = texto.replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/
-/g, '\n');
+                const textoEscapado = texto.replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\n/g, '\\n');
                 
                 chat.innerHTML += `
                     <div class="msg-jarvis-wrapper">
                         <div class="msg-jarvis">${textoMarkdown}</div>
                         <div class="msg-actions">
-                            <button class="action-btn" onclick="copiarMensagemCompleta(this, '${textoEscapado}')">📋 Copiar Mensagem</button>
+                            <button class="action-btn" onclick="copiarMensagemCompleta(this, '${textoEscapado}')" title="Copiar mensagem">${ICON_COPY}</button>
+                            <button class="action-btn" onclick="regenerarResposta(${idx})" title="Gerar novamente">${ICON_REGEN}</button>
                         </div>
                     </div>`;
             } else {
-                chat.innerHTML += `<div class="msg-user">${texto}</div>`;
+                chat.innerHTML += `
+                    <div class="msg-user-wrapper">
+                        <div class="msg-user">${texto}</div>
+                        <div class="msg-actions">
+                            <button class="action-btn" onclick="reenviarMensagem(${idx})">${ICON_RESEND} Reenviar</button>
+                        </div>
+                    </div>`;
             }
             
             chat.scrollTop = chat.scrollHeight;
@@ -566,43 +813,10 @@
         }
 
         // =============== INTEGRAÇÃO API GROQ ===============
-        async function enviarMensagem() {
-            const campo = document.getElementById("campoTexto");
-            const texto = campo.value.trim();
-
-            if (!texto && !imagemBase64) return;
-
-            let textoUsuario = texto || "Descreva a imagem.";
-            let modeloRecomendado = "llama-3.3-70b-versatile"; 
-            let mensagensAPI = [...historico]; 
-
-            if (imagemBase64) {
-                modeloRecomendado = "llama-3.2-11b-vision-preview"; 
-                mensagensAPI.push({
-                    role: "user",
-                    content: [
-                        { type: "text", text: textoUsuario },
-                        { type: "image_url", image_url: { url: imagemBase64 } }
-                    ]
-                });
-                
-                historico.push({ role: "user", content: textoUsuario + " [📷 Imagem Analisada]" });
-                adicionarChat("user", textoUsuario + " [📷]");
-            } else {
-                mensagensAPI.push({ role: "user", content: textoUsuario });
-                historico.push({ role: "user", content: textoUsuario });
-                adicionarChat("user", textoUsuario);
-            }
-            
-            campo.value = "";
-            imagemBase64 = null;
-            document.getElementById('imagem').value = "";
-            document.getElementById('preview-container').style.display = 'none';
-
+        async function chamarAPI(mensagensAPI, modelo) {
             const tempId = "temp-" + Date.now();
             const chat = document.getElementById('chat');
-            
-            // Placeholder de carregamento
+
             chat.innerHTML += `
                 <div class="msg-jarvis-wrapper" id="wrapper-${tempId}">
                     <div class="msg-jarvis" id="${tempId}">Processando...</div>
@@ -617,7 +831,7 @@
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        model: modeloRecomendado,
+                        model: modelo,
                         messages: mensagensAPI,
                         max_tokens: 1024
                     })
@@ -625,24 +839,80 @@
 
                 const dados = await resposta.json();
                 if (dados.error) throw new Error(dados.error.message);
-                
+
                 const textoJarvis = dados.choices[0].message.content;
-                
-                // Remove o placeholder e adiciona a mensagem formatada corretamente
+
                 const wrapperAntigo = document.getElementById(`wrapper-${tempId}`);
-                if(wrapperAntigo) wrapperAntigo.remove();
-                
+                if (wrapperAntigo) wrapperAntigo.remove();
+
                 historico.push({ role: "assistant", content: textoJarvis });
-                adicionarChat("jarvis", textoJarvis);
-                
+                adicionarChat("jarvis", textoJarvis, historico.length - 1);
+
                 salvarMemoria();
                 falarJarvis(textoJarvis);
 
             } catch (erro) {
                 const msgErro = document.getElementById(tempId);
-                if(msgErro) msgErro.innerText = "Erro nos sistemas. Verifique sua chave da API ou conexão.";
+                if (msgErro) msgErro.innerText = "Erro nos sistemas. Verifique sua chave da API ou conexão.";
                 console.error(erro);
             }
+        }
+
+        async function enviarMensagem() {
+            const campo = document.getElementById("campoTexto");
+            const texto = campo.value.trim();
+
+            if (!texto && !imagemBase64) return;
+
+            let textoUsuario = texto || "Descreva a imagem.";
+            let modeloRecomendado = "openai/gpt-oss-120b"; 
+            let mensagensAPI = [...historico]; 
+
+            if (imagemBase64) {
+                modeloRecomendado = "qwen/qwen3.6-27b"; 
+                mensagensAPI.push({
+                    role: "user",
+                    content: [
+                        { type: "text", text: textoUsuario },
+                        { type: "image_url", image_url: { url: imagemBase64 } }
+                    ]
+                });
+                
+                historico.push({ role: "user", content: textoUsuario + " [📷 Imagem Analisada]" });
+                adicionarChat("user", textoUsuario + " [📷]", historico.length - 1);
+            } else {
+                mensagensAPI.push({ role: "user", content: textoUsuario });
+                historico.push({ role: "user", content: textoUsuario });
+                adicionarChat("user", textoUsuario, historico.length - 1);
+            }
+            
+            campo.value = "";
+            imagemBase64 = null;
+            document.getElementById('imagem').value = "";
+            document.getElementById('preview-container').style.display = 'none';
+
+            salvarMemoria();
+            await chamarAPI(mensagensAPI, modeloRecomendado);
+        }
+
+        // Reenvia uma mensagem já existente do usuário como uma nova mensagem
+        function reenviarMensagem(idx) {
+            const msg = historico[idx];
+            if (!msg || msg.role !== 'user' || typeof msg.content !== 'string') return;
+            const texto = msg.content.replace(/ \[📷 Imagem Analisada\]$/, '');
+            document.getElementById('campoTexto').value = texto;
+            enviarMensagem();
+        }
+
+        // Remove uma resposta do JARVIS e gera uma nova a partir do histórico até ali
+        async function regenerarResposta(idx) {
+            const msg = historico[idx];
+            if (!msg || msg.role !== 'assistant') return;
+            historico.splice(idx, 1);
+            salvarMemoria();
+            renderizarChat();
+            const mensagensAPI = [...historico];
+            await chamarAPI(mensagensAPI, "openai/gpt-oss-120b");
         }
 
         window.onload = checkAuth;
