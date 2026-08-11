@@ -2,7 +2,6 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport bloqueado para evitar zoom e arrastes indesejados no mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>J.A.R.V.I.S. Pessoal</title>
     <link rel="manifest" href="manifest.json">
@@ -12,14 +11,13 @@
         body {
             background-color: #0B0E14;
             color: #E2E8F0;
-            /* 100dvh garante que o app se adapte quando o teclado do celular abrir */
             height: 100dvh; 
-            width: 100vw;
-            overflow: hidden; /* Trava o scroll da página inteira */
+            width: 100%; /* CORREÇÃO: 100% em vez de 100vw evita que a barra passe da tela na direita */
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            overscroll-behavior-y: none; /* Evita o "puxar para recarregar" do Android */
-            touch-action: pan-y; /* Permite apenas rolagem vertical onde for necessário (no chat) */
+            overscroll-behavior-y: none;
+            touch-action: pan-y;
         }
         
         /* ================= TELA DE LOGIN ================= */
@@ -49,17 +47,17 @@
         .btn-register { background-color: #1A1F2C; color: #00F0FF; border: 1px solid #00F0FF; }
         #auth-msg { color: #FF4444; font-size: 14px; }
 
-        /* ================= MENU LATERAL (SIDEBAR) ================= */
+        /* ================= MENU LATERAL ================= */
         #overlay-menu {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
+            top: 0; left: 0; width: 100%; height: 100vh;
             background: rgba(0,0,0,0.6);
             z-index: 100;
         }
         #sidebar {
             position: fixed;
-            top: 0; left: -280px; /* Escondido fora da tela */
+            top: 0; left: -280px;
             width: 260px;
             height: 100vh;
             background-color: #10141D;
@@ -123,7 +121,6 @@
             cursor: pointer;
             padding: 0 5px;
         }
-        /* Espaçador invisível para centralizar o título J.A.R.V.I.S */
         .header-spacer { width: 34px; } 
 
         .chat-area {
@@ -137,26 +134,29 @@
         .msg-user {
             align-self: flex-end; background-color: #1A1F2C; border: 1px solid #00F0FF44;
             color: #FFFFFF; padding: 10px 14px; border-radius: 12px 12px 0 12px; max-width: 80%;
+            word-wrap: break-word;
         }
         .msg-jarvis {
             align-self: flex-start; background-color: #10141D; border: 1px solid #00F0FFaa;
             color: #00F0FF; padding: 10px 14px; border-radius: 12px 12px 12px 0; max-width: 85%;
+            word-wrap: break-word;
         }
 
         #preview-container { color: #00F0FF; font-size: 12px; text-align: center; margin-bottom: 5px; display: none; }
 
-        /* ================= NOVO INPUT (INSPIRADO NA IMAGEM) ================= */
+        /* ================= INPUT ================= */
         .input-wrapper {
             padding: 10px 15px 15px 15px;
             background: #0B0E14;
+            width: 100%;
         }
         .pill-container {
             display: flex;
             align-items: center;
-            background-color: #1E1E1E; /* Cinza escuro da imagem */
-            border-radius: 50px; /* Formato de pílula */
+            background-color: #1E1E1E; 
+            border-radius: 50px; 
             padding: 6px 8px;
-            gap: 8px;
+            gap: 6px; /* CORREÇÃO: Menos espaço entre os itens para caber telas pequenas */
             width: 100%;
             max-width: 600px;
             margin: 0 auto;
@@ -164,6 +164,7 @@
         
         .pill-container input[type="text"] {
             flex-grow: 1;
+            min-width: 0; /* CORREÇÃO: Impede que o campo de texto empurre o botão pra fora */
             background-color: transparent;
             border: none;
             color: #FFFFFF;
@@ -184,18 +185,18 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 5px 10px;
+            padding: 5px;
             border-radius: 50%;
+            flex-shrink: 0;
         }
 
-        /* Botão de enviar azul circular */
         .btn-send-pill {
-            background-color: #1a3673; /* Azul escuro da imagem */
+            background-color: #1a3673; 
             color: #FFF;
             border: none;
             border-radius: 50%;
-            width: 45px;
-            height: 45px;
+            width: 40px; /* Levemente menor para caber melhor */
+            height: 40px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -204,11 +205,8 @@
             flex-shrink: 0;
             transition: transform 0.1s;
         }
-        .btn-send-pill:active {
-            transform: scale(0.95);
-        }
+        .btn-send-pill:active { transform: scale(0.95); }
         
-        /* Animação do mic gravando */
         .mic-recording {
             color: #FF4444 !important;
             animation: pulse 1s infinite;
@@ -223,7 +221,6 @@
 </head>
 <body>
 
-    <!-- OVERLAY DE AUTENTICAÇÃO -->
     <div id="auth-overlay">
         <h2>J.A.R.V.I.S. Auth</h2>
         <input type="text" id="username" placeholder="Nome do Usuário">
@@ -233,60 +230,43 @@
         <p id="auth-msg"></p>
     </div>
 
-    <!-- MENU LATERAL -->
     <div id="overlay-menu" onclick="fecharMenu()"></div>
     <div id="sidebar">
         <div class="sidebar-header">MENU</div>
-        
         <button class="menu-btn-item" onclick="abrirConfig()">⚙️ Configurações</button>
         <button class="menu-btn-item menu-btn-danger" onclick="confirmarLimpeza()">🗑️ Resetar Memória</button>
-        
-        <div style="flex-grow: 1;"></div> <!-- Empurra o botão de sair pra baixo -->
-        
+        <div style="flex-grow: 1;"></div>
         <button class="menu-btn-item" style="border-top: 1px solid #00F0FF33;" onclick="fazerLogout()">🚪 Sair</button>
     </div>
 
-    <!-- APLICATIVO PRINCIPAL -->
     <div id="app-container">
-        <!-- Header com Hamburguer -->
         <div class="header">
             <button class="btn-hamburguer" onclick="abrirMenu()">☰</button>
             <span>J.A.R.V.I.S.</span>
             <div class="header-spacer"></div>
         </div>
         
-        <!-- Área de Chat -->
         <div class="chat-area" id="chat"></div>
-        
         <div id="preview-container">📷 Imagem Pronta para Envio</div>
 
-        <!-- Nova Área de Input (Inspirada na Imagem) -->
         <div class="input-wrapper">
             <div class="pill-container">
-                <!-- Botão de Anexo (+) -->
                 <label for="imagem" class="icon-btn-pill" style="font-size: 28px; font-weight: 300;">+</label>
                 <input type="file" id="imagem" accept="image/*" style="display:none;" onchange="previewImagem()">
                 
-                <!-- Campo de Texto -->
                 <input type="text" id="campoTexto" placeholder="Mensagem..." onkeypress="handleEnter(event)">
                 
-                <!-- Botão de Microfone -->
                 <button id="btn-mic" class="icon-btn-pill" onclick="toggleMic()">
-                    <!-- Ícone SVG simples de Mic para ficar limpo -->
                     <svg width="20" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
                 </button>
                 
-                <!-- Botão Enviar (Circulo Azul) -->
-                <button class="btn-send-pill" onclick="enviarMensagem()">
-                    <!-- Ícone de Ondas / Enviar -->
-                    ılı
-                </button>
+                <button class="btn-send-pill" onclick="enviarMensagem()">ılı</button>
             </div>
         </div>
     </div>
 
     <script>
-        const API_KEY = "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"; // <<< INSIRA SUA CHAVE DA GROQ AQUI
+        const API_KEY = "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"; 
 
         // =============== MENU LATERAL ===============
         function abrirMenu() {
@@ -297,10 +277,7 @@
             document.getElementById('sidebar').style.left = '-280px';
             setTimeout(() => { document.getElementById('overlay-menu').style.display = 'none'; }, 300);
         }
-        function abrirConfig() {
-            alert("Em breve: Ajustes de voz, cores e API.");
-            fecharMenu();
-        }
+        function abrirConfig() { alert("Em breve: Ajustes de voz, cores e API."); fecharMenu(); }
         function fazerLogout() {
             if(confirm("Deseja realmente sair?")) {
                 localStorage.removeItem('currentUser');
@@ -323,25 +300,20 @@
                 carregarMemoria(current);
             }
         }
-
         function registrar() {
             const user = document.getElementById('username').value.trim();
             const pass = document.getElementById('password').value.trim();
             if (!user || !pass) return showAlert("Preencha nome e senha!");
-            
             const users = JSON.parse(localStorage.getItem('jarvisUsers')) || {};
             if (users[user]) return showAlert("Usuário já existe!");
-            
             users[user] = pass;
             localStorage.setItem('jarvisUsers', JSON.stringify(users));
             showAlert("Usuário registrado! Agora clique em Acessar.", "#00F0FF");
         }
-
         function login() {
             const user = document.getElementById('username').value.trim();
             const pass = document.getElementById('password').value.trim();
             const users = JSON.parse(localStorage.getItem('jarvisUsers')) || {};
-            
             if (users[user] && users[user] === pass) {
                 localStorage.setItem('currentUser', user);
                 checkAuth();
@@ -349,23 +321,21 @@
                 showAlert("Acesso Negado. Usuário ou senha incorretos.");
             }
         }
-
         function showAlert(msg, color = "#FF4444") {
             const el = document.getElementById('auth-msg');
             el.innerText = msg;
             el.style.color = color;
         }
 
-        // =============== MEMÓRIA (HISTÓRICO) ===============
+        // =============== MEMÓRIA ===============
         let historico = [];
         let systemPrompt = {};
 
         function carregarMemoria(user) {
             systemPrompt = { 
                 role: "system", 
-                content: `Você é o J.A.R.V.I.S., assistente criado por Tony Stark. O usuário atual que você está atendendo se chama ${user}. Responda de forma curta, direta, polida e chame-o de Senhor ${user}.` 
+                content: `Você é o J.A.R.V.I.S., assistente criado por Tony Stark. O usuário atual que você está atendendo se chama ${user}. Responda de forma curta, direta e polida.` 
             };
-
             const salva = localStorage.getItem('memoria_' + user);
             if (salva) {
                 historico = JSON.parse(salva);
@@ -376,58 +346,65 @@
                 falarJarvis(`Sistemas operacionais, Senhor ${user}.`);
             }
         }
-
         function salvarMemoria() {
             const user = localStorage.getItem('currentUser');
             localStorage.setItem('memoria_' + user, JSON.stringify(historico));
         }
-
         function limparMemoria() {
             historico = [systemPrompt];
             salvarMemoria();
             document.getElementById('chat').innerHTML = '';
-            adicionarChat("jarvis", "Memória anterior apagada com sucesso, Senhor.");
+            adicionarChat("jarvis", "Memória apagada. O que deseja agora?");
         }
 
-        // =============== INTERFACE E CHAT ===============
         function renderizarChat() {
             const chat = document.getElementById('chat');
             chat.innerHTML = '';
             historico.forEach(msg => {
-                if (msg.role === 'user') adicionarChat('user', formatarConteudoUsuario(msg.content));
+                if (msg.role === 'user') adicionarChat('user', msg.content);
                 if (msg.role === 'assistant') adicionarChat('jarvis', msg.content);
             });
         }
-
-        function formatarConteudoUsuario(content) {
-            if (typeof content === 'string') return content;
-            let texto = "";
-            content.forEach(item => {
-                if (item.type === 'text') texto += item.text;
-                if (item.type === 'image_url') texto += " [📷 Imagem Analisada]";
-            });
-            return texto;
-        }
-
         function adicionarChat(remetente, texto) {
             const chat = document.getElementById('chat');
             chat.innerHTML += `<div class="msg-${remetente}">${texto}</div>`;
             chat.scrollTop = chat.scrollHeight;
         }
+        function handleEnter(e) { if(e.key === "Enter") enviarMensagem(); }
 
-        function handleEnter(e) {
-            if(e.key === "Enter") enviarMensagem();
-        }
-
-        // =============== PROCESSAMENTO DE IMAGEM ===============
+        // =============== PROCESSAMENTO DE IMAGEM (COM COMPRESSÃO) ===============
         let imagemBase64 = null;
         function previewImagem() {
             const input = document.getElementById('imagem');
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    imagemBase64 = e.target.result;
-                    document.getElementById('preview-container').style.display = 'block';
+                    const img = new Image();
+                    img.onload = function() {
+                        // Comprime a imagem pelo Canvas para evitar o erro de limite de tamanho da Groq
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        let width = img.width;
+                        let height = img.height;
+                        const max_dim = 800; 
+
+                        if (width > height && width > max_dim) {
+                            height *= max_dim / width;
+                            width = max_dim;
+                        } else if (height > max_dim) {
+                            width *= max_dim / height;
+                            height = max_dim;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Transforma em jpeg comprimido a 70%
+                        imagemBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                        document.getElementById('preview-container').style.display = 'block';
+                    }
+                    img.src = e.target.result;
                 };
                 reader.readAsDataURL(input.files[0]);
             }
@@ -443,34 +420,18 @@
             recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.lang = 'pt-BR';
-            
-            recognition.onstart = function() {
-                btnMic.classList.add('mic-recording');
-                microfoneAtivo = true;
-            };
-            
+            recognition.onstart = function() { btnMic.classList.add('mic-recording'); microfoneAtivo = true; };
             recognition.onresult = function(event) {
-                const transcript = event.results[0][0].transcript;
-                document.getElementById('campoTexto').value = transcript;
+                document.getElementById('campoTexto').value = event.results[0][0].transcript;
                 enviarMensagem(); 
             };
-            
-            recognition.onend = function() {
-                btnMic.classList.remove('mic-recording');
-                microfoneAtivo = false;
-            };
+            recognition.onend = function() { btnMic.classList.remove('mic-recording'); microfoneAtivo = false; };
         }
-
         function toggleMic() {
             if (!recognition) return alert("Seu navegador não suporta captura de voz.");
-            if (microfoneAtivo) {
-                recognition.stop();
-            } else {
-                recognition.start();
-            }
+            microfoneAtivo ? recognition.stop() : recognition.start();
         }
 
-        // =============== SINTETIZADOR DE VOZ ===============
         function falarJarvis(texto) {
             if ('speechSynthesis' in window) {
                 const textoLimpo = texto.replace(/[*#]/g, ''); 
@@ -489,22 +450,31 @@
 
             if (!texto && !imagemBase64) return;
 
-            let textoUsuario = texto || "Descreva detalhadamente a imagem anexada.";
-            let conteudoEnvio = textoUsuario;
+            let textoUsuario = texto || "Descreva a imagem.";
             let modeloRecomendado = "llama-3.3-70b-versatile"; 
+            
+            // Criamos uma cópia do histórico apenas para essa requisição
+            let mensagensAPI = [...historico]; 
 
             if (imagemBase64) {
                 modeloRecomendado = "llama-3.2-11b-vision-preview"; 
-                conteudoEnvio = [
-                    { type: "text", text: textoUsuario },
-                    { type: "image_url", image_url: { url: imagemBase64 } }
-                ];
+                // Envia a imagem para a API
+                mensagensAPI.push({
+                    role: "user",
+                    content: [
+                        { type: "text", text: textoUsuario },
+                        { type: "image_url", image_url: { url: imagemBase64 } }
+                    ]
+                });
+                
+                // SALVA APENAS O TEXTO NA MEMÓRIA PARA NÃO BUGAR O MODELO NAS PRÓXIMAS MENSAGENS
+                historico.push({ role: "user", content: textoUsuario + " [📷 Imagem Analisada]" });
                 adicionarChat("user", textoUsuario + " [📷]");
             } else {
+                mensagensAPI.push({ role: "user", content: textoUsuario });
+                historico.push({ role: "user", content: textoUsuario });
                 adicionarChat("user", textoUsuario);
             }
-
-            historico.push({ role: "user", content: conteudoEnvio });
             
             campo.value = "";
             imagemBase64 = null;
@@ -525,7 +495,7 @@
                     },
                     body: JSON.stringify({
                         model: modeloRecomendado,
-                        messages: historico,
+                        messages: mensagensAPI,
                         max_tokens: 1024
                     })
                 });
@@ -542,6 +512,7 @@
 
             } catch (erro) {
                 document.getElementById(tempId).innerText = "Erro nos sistemas. Verifique sua chave da API ou conexão.";
+                console.error(erro);
             }
         }
 
