@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S.</title>
+    <!-- Linha que conecta o ícone ao app -->
+    <link rel="manifest" href="manifest.json">
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0B0E14;
+            color: #E2E8F0;
+            font-family: sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+        }
+        .header {
+            text-align: center;
+            color: #00F0FF;
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #00F0FF33;
+        }
+        .chat-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 15px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .msg-user {
+            align-self: flex-end;
+            background-color: #1A1F2C;
+            border: 1px solid #00F0FF44;
+            color: #FFFFFF;
+            padding: 10px 14px;
+            border-radius: 12px 12px 0 12px;
+            max-width: 80%;
+        }
+        .msg-jarvis {
+            align-self: flex-start;
+            background-color: #10141D;
+            border: 1px solid #00F0FFaa;
+            color: #00F0FF;
+            padding: 10px 14px;
+            border-radius: 12px 12px 12px 0;
+            max-width: 85%;
+        }
+        .input-area {
+            display: flex;
+            gap: 8px;
+        }
+        input {
+            flex-grow: 1;
+            background-color: #1A1F2C;
+            border: 1px solid #00F0FF66;
+            border-radius: 8px;
+            padding: 12px;
+            color: #FFFFFF;
+            font-size: 14px;
+            outline: none;
+        }
+        button {
+            background-color: #FFB800;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">J.A.R.V.I.S.</div>
+    
+    <div class="chat-area" id="chat">
+        <div class="msg-jarvis">Sistemas operacionais, Senhor. Em que posso ajudar?</div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="campoTexto" placeholder="O que deseja, Senhor?">
+        <button onclick="enviarMensagem()">ENVIAR</button>
+    </div>
+
+    <script>
+        const API_KEY = "SUA_CHAVE_GROQ_AQUI";
+
+        async function enviarMensagem() {
+            const campo = document.getElementById("campoTexto");
+            const chat = document.getElementById("chat");
+            const texto = campo.value.trim();
+
+            if (!texto) return;
+
+            // Adiciona mensagem do usuário na tela
+            chat.innerHTML += `<div class="msg-user">${texto}</div>`;
+            campo.value = "";
+            
+            // Adiciona aviso de carregamento
+            const tempId = "temp-" + Date.now();
+            chat.innerHTML += `<div class="msg-jarvis" id="${tempId}">Processando...</div>`;
+            chat.scrollTop = chat.scrollHeight;
+
+            try {
+                // Requisição direta da API via JavaScript
+                const resposta = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + API_KEY,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            { role: "system", content: "Você é o J.A.R.V.I.S., assistente criado por Tony Stark. Responda de forma curta, direta, polida e chame o usuário de Senhor." },
+                            { role: "user", content: texto }
+                        ]
+                    })
+                });
+
+                const dados = await resposta.json();
+                const textoJarvis = dados.choices[0].message.content;
+
+                // Atualiza o aviso com a resposta final do Jarvis
+                document.getElementById(tempId).innerText = textoJarvis;
+
+            } catch (erro) {
+                document.getElementById(tempId).innerText = "Erro ao se conectar com os servidores, Senhor.";
+            }
+
+            chat.scrollTop = chat.scrollHeight;
+        }
+    </script>
+</body>
+</html>
