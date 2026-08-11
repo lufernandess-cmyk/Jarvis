@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Metatags para forçar o aplicativo a rodar em tela cheia sem a barra do navegador (Standalone) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0B0E14">
+    
     <title>J.A.R.V.I.S. Pessoal</title>
     <link rel="manifest" href="manifest.json">
     <style>
@@ -12,7 +18,7 @@
             background-color: #0B0E14;
             color: #E2E8F0;
             height: 100dvh; 
-            width: 100%; /* CORREÇÃO: 100% em vez de 100vw evita que a barra passe da tela na direita */
+            width: 100%; 
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -129,18 +135,45 @@
             padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
         }
         .msg-user {
             align-self: flex-end; background-color: #1A1F2C; border: 1px solid #00F0FF44;
-            color: #FFFFFF; padding: 10px 14px; border-radius: 12px 12px 0 12px; max-width: 80%;
-            word-wrap: break-word;
+            color: #FFFFFF; padding: 12px 16px; border-radius: 12px 12px 0 12px; max-width: 80%;
+            word-wrap: break-word; line-height: 1.4;
+        }
+        
+        .msg-jarvis-wrapper {
+            align-self: flex-start; max-width: 85%; display: flex; flex-direction: column; gap: 5px;
         }
         .msg-jarvis {
-            align-self: flex-start; background-color: #10141D; border: 1px solid #00F0FFaa;
-            color: #00F0FF; padding: 10px 14px; border-radius: 12px 12px 12px 0; max-width: 85%;
-            word-wrap: break-word;
+            background-color: #10141D; border: 1px solid #00F0FFaa;
+            color: #00F0FF; padding: 12px 16px; border-radius: 12px 12px 12px 0; 
+            word-wrap: break-word; line-height: 1.5;
         }
+
+        /* Formatação Markdown Básica */
+        .msg-jarvis strong { color: #FFF; }
+        .code-block {
+            background: #000; border-radius: 8px; margin: 10px 0; border: 1px solid #00F0FF33;
+            overflow: hidden; position: relative;
+        }
+        .code-block-header {
+            background: #1A1F2C; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center;
+            font-size: 12px; color: #888; border-bottom: 1px solid #00F0FF33;
+        }
+        .copy-btn {
+            background: transparent; border: none; color: #00F0FF; cursor: pointer; font-size: 12px; font-weight: bold;
+        }
+        .code-block pre { padding: 10px; overflow-x: auto; font-family: monospace; font-size: 13px; color: #E2E8F0; margin: 0; }
+        
+        .msg-actions {
+            display: flex; gap: 10px; padding-left: 5px;
+        }
+        .action-btn {
+            background: transparent; border: none; color: #888; cursor: pointer; font-size: 12px;
+        }
+        .action-btn:hover { color: #00F0FF; }
 
         #preview-container { color: #00F0FF; font-size: 12px; text-align: center; margin-bottom: 5px; display: none; }
 
@@ -156,7 +189,7 @@
             background-color: #1E1E1E; 
             border-radius: 50px; 
             padding: 6px 8px;
-            gap: 6px; /* CORREÇÃO: Menos espaço entre os itens para caber telas pequenas */
+            gap: 6px; 
             width: 100%;
             max-width: 600px;
             margin: 0 auto;
@@ -164,7 +197,7 @@
         
         .pill-container input[type="text"] {
             flex-grow: 1;
-            min-width: 0; /* CORREÇÃO: Impede que o campo de texto empurre o botão pra fora */
+            min-width: 0; 
             background-color: transparent;
             border: none;
             color: #FFFFFF;
@@ -195,7 +228,7 @@
             color: #FFF;
             border: none;
             border-radius: 50%;
-            width: 40px; /* Levemente menor para caber melhor */
+            width: 40px; 
             height: 40px;
             display: flex;
             justify-content: center;
@@ -233,6 +266,11 @@
     <div id="overlay-menu" onclick="fecharMenu()"></div>
     <div id="sidebar">
         <div class="sidebar-header">MENU</div>
+        
+        <!-- Novos botões base de assistente de IA -->
+        <button class="menu-btn-item" id="btn-toggle-voz" onclick="toggleVoz()">🔊 Resposta por Voz: LIGADA</button>
+        <button class="menu-btn-item" onclick="location.reload()">🔄 Recarregar Página</button>
+        
         <button class="menu-btn-item" onclick="abrirConfig()">⚙️ Configurações</button>
         <button class="menu-btn-item menu-btn-danger" onclick="confirmarLimpeza()">🗑️ Resetar Memória</button>
         <div style="flex-grow: 1;"></div>
@@ -267,6 +305,20 @@
 
     <script>
         const API_KEY = "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"; 
+        
+        // =============== CONTROLE DE VOZ ===============
+        let vozAtivada = localStorage.getItem('jarvis_voz') !== 'false';
+        atualizarTextoBotaoVoz();
+
+        function toggleVoz() {
+            vozAtivada = !vozAtivada;
+            localStorage.setItem('jarvis_voz', vozAtivada);
+            atualizarTextoBotaoVoz();
+        }
+        
+        function atualizarTextoBotaoVoz() {
+            document.getElementById('btn-toggle-voz').innerText = vozAtivada ? "🔊 Resposta por Voz: LIGADA" : "🔇 Resposta por Voz: DESLIGADA";
+        }
 
         // =============== MENU LATERAL ===============
         function abrirMenu() {
@@ -277,7 +329,7 @@
             document.getElementById('sidebar').style.left = '-280px';
             setTimeout(() => { document.getElementById('overlay-menu').style.display = 'none'; }, 300);
         }
-        function abrirConfig() { alert("Em breve: Ajustes de voz, cores e API."); fecharMenu(); }
+        function abrirConfig() { alert("Em breve: Ajustes avançados."); fecharMenu(); }
         function fazerLogout() {
             if(confirm("Deseja realmente sair?")) {
                 localStorage.removeItem('currentUser');
@@ -334,7 +386,7 @@
         function carregarMemoria(user) {
             systemPrompt = { 
                 role: "system", 
-                content: `Você é o J.A.R.V.I.S., assistente criado por Tony Stark. O usuário atual que você está atendendo se chama ${user}. Responda de forma curta, direta e polida.` 
+                content: `Você é o J.A.R.V.I.S., assistente criado por Tony Stark. O usuário atual que você está atendendo se chama ${user}. Responda de forma direta e polida. Você suporta Markdown, então use marcações como negrito (**texto**) e blocos de código quando necessário.` 
             };
             const salva = localStorage.getItem('memoria_' + user);
             if (salva) {
@@ -365,14 +417,90 @@
                 if (msg.role === 'assistant') adicionarChat('jarvis', msg.content);
             });
         }
+
+        // =============== PARSER MARKDOWN & COPY ===============
+        function parseMarkdown(text) {
+            if (!text) return "";
+            
+            // Escapa HTML básico por segurança
+            text = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
+            // Detecta blocos de código: ```linguagem ...código... ```
+            text = text.replace(/```(.*?)
+([\s\S]*?)```/g, function(match, lang, code) {
+                const linguagem = lang.trim() || "código";
+                return `<div class="code-block">
+                            <div class="code-block-header">
+                                <span>${linguagem}</span>
+                                <button class="copy-btn" onclick="copiarTexto(this, \`${code.replace(/`/g, '\`')}\`)">Copiar</button>
+                            </div>
+                            <pre><code>${code}</code></pre>
+                        </div>`;
+            });
+            
+            // Fallback para blocos sem quebra de linha inicial
+            text = text.replace(/```([\s\S]*?)```/g, function(match, code) {
+                return `<div class="code-block">
+                            <div class="code-block-header">
+                                <span>código</span>
+                                <button class="copy-btn" onclick="copiarTexto(this, \`${code.replace(/`/g, '\`')}\`)">Copiar</button>
+                            </div>
+                            <pre><code>${code}</code></pre>
+                        </div>`;
+            });
+            
+            // Negrito e Itálico
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            // Quebra de linha simples
+            text = text.replace(/
+/g, '<br>');
+            
+            return text;
+        }
+
+        function copiarTexto(botao, texto) {
+            navigator.clipboard.writeText(texto).then(() => {
+                const textoOriginal = botao.innerText;
+                botao.innerText = 'Copiado!';
+                setTimeout(() => { botao.innerText = textoOriginal; }, 2000);
+            });
+        }
+        
+        function copiarMensagemCompleta(botao, textoMensagem) {
+            navigator.clipboard.writeText(textoMensagem).then(() => {
+                botao.innerText = '✓ Copiado';
+                setTimeout(() => { botao.innerText = '📋 Copiar Mensagem'; }, 2000);
+            });
+        }
+
         function adicionarChat(remetente, texto) {
             const chat = document.getElementById('chat');
-            chat.innerHTML += `<div class="msg-${remetente}">${texto}</div>`;
+            
+            if (remetente === 'jarvis') {
+                const textoMarkdown = parseMarkdown(texto);
+                // Armazenar o texto original de forma segura para o botão de copiar
+                const textoEscapado = texto.replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/
+/g, '\n');
+                
+                chat.innerHTML += `
+                    <div class="msg-jarvis-wrapper">
+                        <div class="msg-jarvis">${textoMarkdown}</div>
+                        <div class="msg-actions">
+                            <button class="action-btn" onclick="copiarMensagemCompleta(this, '${textoEscapado}')">📋 Copiar Mensagem</button>
+                        </div>
+                    </div>`;
+            } else {
+                chat.innerHTML += `<div class="msg-user">${texto}</div>`;
+            }
+            
             chat.scrollTop = chat.scrollHeight;
         }
+
         function handleEnter(e) { if(e.key === "Enter") enviarMensagem(); }
 
-        // =============== PROCESSAMENTO DE IMAGEM (COM COMPRESSÃO) ===============
+        // =============== PROCESSAMENTO DE IMAGEM ===============
         let imagemBase64 = null;
         function previewImagem() {
             const input = document.getElementById('imagem');
@@ -381,26 +509,19 @@
                 reader.onload = function(e) {
                     const img = new Image();
                     img.onload = function() {
-                        // Comprime a imagem pelo Canvas para evitar o erro de limite de tamanho da Groq
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        let width = img.width;
-                        let height = img.height;
+                        let width = img.width, height = img.height;
                         const max_dim = 800; 
 
                         if (width > height && width > max_dim) {
-                            height *= max_dim / width;
-                            width = max_dim;
+                            height *= max_dim / width; width = max_dim;
                         } else if (height > max_dim) {
-                            width *= max_dim / height;
-                            height = max_dim;
+                            width *= max_dim / height; height = max_dim;
                         }
 
-                        canvas.width = width;
-                        canvas.height = height;
+                        canvas.width = width; canvas.height = height;
                         ctx.drawImage(img, 0, 0, width, height);
-                        
-                        // Transforma em jpeg comprimido a 70%
                         imagemBase64 = canvas.toDataURL('image/jpeg', 0.7);
                         document.getElementById('preview-container').style.display = 'block';
                     }
@@ -433,8 +554,9 @@
         }
 
         function falarJarvis(texto) {
-            if ('speechSynthesis' in window) {
-                const textoLimpo = texto.replace(/[*#]/g, ''); 
+            // Só fala se a opção estiver ligada no menu
+            if (vozAtivada && 'speechSynthesis' in window) {
+                const textoLimpo = texto.replace(/[*#`]/g, ''); 
                 const utterance = new SpeechSynthesisUtterance(textoLimpo);
                 utterance.lang = 'pt-BR';
                 utterance.rate = 1.2;
@@ -452,13 +574,10 @@
 
             let textoUsuario = texto || "Descreva a imagem.";
             let modeloRecomendado = "llama-3.3-70b-versatile"; 
-            
-            // Criamos uma cópia do histórico apenas para essa requisição
             let mensagensAPI = [...historico]; 
 
             if (imagemBase64) {
                 modeloRecomendado = "llama-3.2-11b-vision-preview"; 
-                // Envia a imagem para a API
                 mensagensAPI.push({
                     role: "user",
                     content: [
@@ -467,7 +586,6 @@
                     ]
                 });
                 
-                // SALVA APENAS O TEXTO NA MEMÓRIA PARA NÃO BUGAR O MODELO NAS PRÓXIMAS MENSAGENS
                 historico.push({ role: "user", content: textoUsuario + " [📷 Imagem Analisada]" });
                 adicionarChat("user", textoUsuario + " [📷]");
             } else {
@@ -483,7 +601,12 @@
 
             const tempId = "temp-" + Date.now();
             const chat = document.getElementById('chat');
-            chat.innerHTML += `<div class="msg-jarvis" id="${tempId}">Processando...</div>`;
+            
+            // Placeholder de carregamento
+            chat.innerHTML += `
+                <div class="msg-jarvis-wrapper" id="wrapper-${tempId}">
+                    <div class="msg-jarvis" id="${tempId}">Processando...</div>
+                </div>`;
             chat.scrollTop = chat.scrollHeight;
 
             try {
@@ -505,13 +628,19 @@
                 
                 const textoJarvis = dados.choices[0].message.content;
                 
-                document.getElementById(tempId).innerText = textoJarvis;
+                // Remove o placeholder e adiciona a mensagem formatada corretamente
+                const wrapperAntigo = document.getElementById(`wrapper-${tempId}`);
+                if(wrapperAntigo) wrapperAntigo.remove();
+                
                 historico.push({ role: "assistant", content: textoJarvis });
+                adicionarChat("jarvis", textoJarvis);
+                
                 salvarMemoria();
                 falarJarvis(textoJarvis);
 
             } catch (erro) {
-                document.getElementById(tempId).innerText = "Erro nos sistemas. Verifique sua chave da API ou conexão.";
+                const msgErro = document.getElementById(tempId);
+                if(msgErro) msgErro.innerText = "Erro nos sistemas. Verifique sua chave da API ou conexão.";
                 console.error(erro);
             }
         }
