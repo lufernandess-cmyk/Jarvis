@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. Pessoal</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body {
+            background-color: #0B0E14;
+            color: #E2E8F0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* TELA DE LOGIN */
+        #auth-overlay {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            gap: 15px;
+            background: #0B0E14;
+            padding: 20px;
+        }
+        #auth-overlay h2 { color: #00F0FF; text-transform: uppercase; letter-spacing: 2px; }
+        #auth-overlay input {
+            padding: 12px; border-radius: 8px; border: 1px solid #00F0FF66;
+            background: #1A1F2C; color: #FFF; width: 100%; max-width: 300px; outline: none;
+        }
+        #auth-overlay button {
+            padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer;
+            width: 100%; max-width: 300px;
+        }
+        .btn-login { background-color: #00F0FF; color: #000; }
+        .btn-register { background-color: #1A1F2C; color: #00F0FF; border: 1px solid #00F0FF; }
+        #auth-msg { color: #FF4444; font-size: 14px; }
+
+        /* TELA PRINCIPAL */
+        #app-container {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            padding: 15px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #00F0FF;
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #00F0FF33;
+        }
+        .header button {
+            background: #FF4444; color: #FFF; border: none; padding: 5px 10px;
+            border-radius: 5px; font-size: 12px; cursor: pointer; font-weight: bold;
+        }
+        .chat-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 15px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .msg-user {
+            align-self: flex-end; background-color: #1A1F2C; border: 1px solid #00F0FF44;
+            color: #FFFFFF; padding: 10px 14px; border-radius: 12px 12px 0 12px; max-width: 80%;
+        }
+        .msg-jarvis {
+            align-self: flex-start; background-color: #10141D; border: 1px solid #00F0FFaa;
+            color: #00F0FF; padding: 10px 14px; border-radius: 12px 12px 12px 0; max-width: 85%;
+        }
+        .input-area {
+            display: flex; gap: 8px; align-items: center;
+        }
+        .input-area input[type="text"] {
+            flex-grow: 1; background-color: #1A1F2C; border: 1px solid #00F0FF66;
+            border-radius: 8px; padding: 12px; color: #FFFFFF; outline: none;
+        }
+        .input-area button {
+            background-color: #FFB800; color: #000; border: none; border-radius: 8px;
+            padding: 12px 18px; font-weight: bold; cursor: pointer;
+        }
+        .icon-btn {
+            background-color: #1A1F2C !important; color: #FFF !important;
+            padding: 12px !important; border-radius: 8px; border: 1px solid #00F0FF66 !important;
+            cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 16px;
+        }
+        #preview-container { color: #00F0FF; font-size: 12px; text-align: center; margin-top: 5px; display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY DE AUTENTICAÇÃO -->
+    <div id="auth-overlay">
+        <h2>J.A.R.V.I.S. Auth</h2>
+        <input type="text" id="username" placeholder="Nome do Usuário (ex: Lucas)">
+        <input type="password" id="password" placeholder="Senha/PIN">
+        <button class="btn-login" onclick="login()">ACESSAR</button>
+        <button class="btn-register" onclick="registrar()">CADASTRAR USUÁRIO</button>
+        <p id="auth-msg"></p>
+    </div>
+
+    <!-- APLICATIVO PRINCIPAL -->
+    <div id="app-container">
+        <div class="header">
+            <span>J.A.R.V.I.S.</span>
+            <button onclick="limparMemoria()">RESETAR MEMÓRIA</button>
+        </div>
+        
+        <div class="chat-area" id="chat"></div>
+        
+        <div id="preview-container">📷 Imagem Pronta para Envio</div>
+
+        <div class="input-area">
+            <!-- Botão de Anexo (Imagem) -->
+            <label for="imagem" class="icon-btn">📎</label>
+            <input type="file" id="imagem" accept="image/*" style="display:none;" onchange="previewImagem()">
+            
+            <!-- Botão de Microfone -->
+            <button id="btn-mic" class="icon-btn" onclick="toggleMic()">🎤</button>
+            
+            <!-- Campo de Texto -->
+            <input type="text" id="campoTexto" placeholder="Comando...">
+            
+            <!-- Botão Enviar -->
+            <button onclick="enviarMensagem()">ENVIAR</button>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "SUA_CHAVE_GROQ_AQUI"; // <<< INSIRA SUA CHAVE DA GROQ AQUI
+
+        // =============== SISTEMA DE USUÁRIOS ===============
+        function checkAuth() {
+            const current = localStorage.getItem('currentUser');
+            if (current) {
+                document.getElementById('auth-overlay').style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
+                carregarMemoria(current);
+            }
+        }
+
+        function registrar() {
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+            if (!user || !pass) return showAlert("Preencha nome e senha!");
+            
+            const users = JSON.parse(localStorage.getItem('jarvisUsers')) || {};
+            if (users[user]) return showAlert("Usuário já existe!");
+            
+            users[user] = pass;
+            localStorage.setItem('jarvisUsers', JSON.stringify(users));
+            showAlert("Usuário registrado! Agora clique em Acessar.", "#00F0FF");
+        }
+
+        function login() {
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+            const users = JSON.parse(localStorage.getItem('jarvisUsers')) || {};
+            
+            if (users[user] && users[user] === pass) {
+                localStorage.setItem('currentUser', user);
+                checkAuth();
+            } else {
+                showAlert("Acesso Negado. Usuário ou senha incorretos.");
+            }
+        }
+
+        function showAlert(msg, color = "#FF4444") {
+            const el = document.getElementById('auth-msg');
+            el.innerText = msg;
+            el.style.color = color;
+        }
+
+
+        // =============== MEMÓRIA (HISTÓRICO) ===============
+        let historico = [];
+        let systemPrompt = {};
+
+        function carregarMemoria(user) {
+            // Define a personalidade focada no usuário atual (ex: Lucas)
+            systemPrompt = { 
+                role: "system", 
+                content: `Você é o J.A.R.V.I.S., assistente criado por Tony Stark. O usuário atual que você está atendendo se chama ${user}. Responda de forma curta, direta, polida e chame-o de Senhor ${user}.` 
+            };
+
+            const salva = localStorage.getItem('memoria_' + user);
+            if (salva) {
+                historico = JSON.parse(salva);
+                renderizarChat();
+            } else {
+                historico = [systemPrompt];
+                adicionarChat("jarvis", `Sistemas operacionais, Senhor ${user}. Reconhecimento de voz e visão integrados.`);
+                falarJarvis(`Sistemas operacionais, Senhor ${user}.`);
+            }
+        }
+
+        function salvarMemoria() {
+            const user = localStorage.getItem('currentUser');
+            localStorage.setItem('memoria_' + user, JSON.stringify(historico));
+        }
+
+        function limparMemoria() {
+            historico = [systemPrompt];
+            salvarMemoria();
+            document.getElementById('chat').innerHTML = '';
+            adicionarChat("jarvis", "Memória anterior apagada. O que deseja agora?");
+        }
+
+
+        // =============== INTERFACE E CHAT ===============
+        function renderizarChat() {
+            const chat = document.getElementById('chat');
+            chat.innerHTML = '';
+            historico.forEach(msg => {
+                if (msg.role === 'user') adicionarChat('user', formatarConteudoUsuario(msg.content));
+                if (msg.role === 'assistant') adicionarChat('jarvis', msg.content);
+            });
+        }
+
+        function formatarConteudoUsuario(content) {
+            // Se for texto simples (antigo)
+            if (typeof content === 'string') return content;
+            // Se for array com imagem (novo modelo de visao)
+            let texto = "";
+            content.forEach(item => {
+                if (item.type === 'text') texto += item.text;
+                if (item.type === 'image_url') texto += " [📷 Imagem Analisada]";
+            });
+            return texto;
+        }
+
+        function adicionarChat(remetente, texto) {
+            const chat = document.getElementById('chat');
+            chat.innerHTML += `<div class="msg-${remetente}">${texto}</div>`;
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+
+        // =============== PROCESSAMENTO DE IMAGEM ===============
+        let imagemBase64 = null;
+        function previewImagem() {
+            const input = document.getElementById('imagem');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagemBase64 = e.target.result;
+                    document.getElementById('preview-container').style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+
+        // =============== RECONHECIMENTO DE VOZ (MICROFONE) ===============
+        let microfoneAtivo = false;
+        let recognition;
+        
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'pt-BR';
+            
+            recognition.onstart = function() {
+                document.getElementById('btn-mic').style.backgroundColor = '#FF4444'; // Fica vermelho gravando
+                microfoneAtivo = true;
+            };
+            
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('campoTexto').value = transcript;
+                enviarMensagem(); // Envia automaticamente após escutar
+            };
+            
+            recognition.onend = function() {
+                document.getElementById('btn-mic').style.backgroundColor = '#1A1F2C'; // Volta ao normal
+                microfoneAtivo = false;
+            };
+        } else {
+            console.log("Navegador não suporta Speech Recognition");
+        }
+
+        function toggleMic() {
+            if (!recognition) return alert("Seu navegador não suporta captura de voz.");
+            if (microfoneAtivo) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+
+        // =============== SINTETIZADOR DE VOZ (ALTO-FALANTE) ===============
+        function falarJarvis(texto) {
+            if ('speechSynthesis' in window) {
+                // Remove asteriscos e caracteres especiais antes de ler
+                const textoLimpo = texto.replace(/[*#]/g, ''); 
+                const utterance = new SpeechSynthesisUtterance(textoLimpo);
+                utterance.lang = 'pt-BR';
+                utterance.rate = 1.2; // Velocidade da fala levemente aumentada
+                utterance.pitch = 0.9; // Tom ligeiramente mais grave
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+
+        // =============== INTEGRAÇÃO API GROQ ===============
+        async function enviarMensagem() {
+            const campo = document.getElementById("campoTexto");
+            const texto = campo.value.trim();
+
+            if (!texto && !imagemBase64) return;
+
+            let textoUsuario = texto || "Descreva detalhadamente a imagem anexada.";
+            let conteudoEnvio = textoUsuario;
+            let modeloRecomendado = "llama-3.3-70b-versatile"; // Modelo padrão rápido e inteligente
+
+            // Tratamento caso haja imagem
+            if (imagemBase64) {
+                modeloRecomendado = "llama-3.2-11b-vision-preview"; // Muda automaticamente para o modelo de visão
+                conteudoEnvio = [
+                    { type: "text", text: textoUsuario },
+                    { type: "image_url", image_url: { url: imagemBase64 } }
+                ];
+                adicionarChat("user", textoUsuario + " [📷]");
+            } else {
+                adicionarChat("user", textoUsuario);
+            }
+
+            // Atualiza histórico do usuário
+            historico.push({ role: "user", content: conteudoEnvio });
+            
+            // Limpa os campos
+            campo.value = "";
+            imagemBase64 = null;
+            document.getElementById('imagem').value = "";
+            document.getElementById('preview-container').style.display = 'none';
+
+            // Loading state
+            const tempId = "temp-" + Date.now();
+            const chat = document.getElementById('chat');
+            chat.innerHTML += `<div class="msg-jarvis" id="${tempId}">Analisando...</div>`;
+            chat.scrollTop = chat.scrollHeight;
+
+            try {
+                const resposta = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + API_KEY,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: modeloRecomendado,
+                        messages: historico,
+                        max_tokens: 1024
+                    })
+                });
+
+                const dados = await resposta.json();
+                
+                if (dados.error) throw new Error(dados.error.message);
+                
+                const textoJarvis = dados.choices[0].message.content;
+                
+                // Atualiza tela
+                document.getElementById(tempId).innerText = textoJarvis;
+                
+                // Salva na memória
+                historico.push({ role: "assistant", content: textoJarvis });
+                salvarMemoria();
+
+                // Faz o Jarvis falar em voz alta
+                falarJarvis(textoJarvis);
+
+            } catch (erro) {
+                document.getElementById(tempId).innerText = "Erro nos sistemas, Senhor. Verifique sua chave da API ou conexão.";
+                console.error(erro);
+            }
+        }
+
+        // Verifica o login ao abrir o site
+        window.onload = checkAuth;
+    </script>
+</body>
+  </html>
