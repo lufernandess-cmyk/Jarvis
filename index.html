@@ -140,20 +140,24 @@
         /* ===== INPUT ===== */
         .input-wrapper { padding: 10px 14px 14px; background: var(--bg); }
         .pill-container {
-            display: flex; align-items: center; background: var(--bg3);
-            border-radius: 50px; padding: 6px 8px; gap: 6px; width: 100%; max-width: 700px; margin: 0 auto;
+            display: flex; align-items: flex-end; background: var(--bg3);
+            border-radius: 24px; padding: 8px 10px; gap: 6px; width: 100%; max-width: 700px; margin: 0 auto;
         }
-        .pill-container input[type="text"] {
+        .pill-container textarea {
             flex: 1; min-width: 0; background: transparent; border: none; color: var(--text);
-            font-size: 16px; outline: none; padding: 8px 4px;
+            font-size: 16px; outline: none; padding: 8px 4px; resize: none;
+            line-height: 1.4; max-height: 140px; overflow-y: auto;
+            font-family: inherit; min-height: 24px;
         }
         .icon-btn-pill {
             background: transparent; border: none; color: var(--text); font-size: 22px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; padding: 5px; border-radius: 50%;
+            flex-shrink: 0; margin-bottom: 2px;
         }
         .btn-send-pill, .btn-stop-pill {
             border: none; border-radius: 50%; width: 40px; height: 40px;
             display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px;
+            flex-shrink: 0;
         }
         .btn-send-pill { background: #1a3673; color: #fff; }
         .btn-stop-pill { background: var(--danger); color: #fff; display: none; }
@@ -207,6 +211,18 @@
         .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
         .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
         @keyframes blink { 0%{opacity:.2} 20%{opacity:1} 100%{opacity:.2} }
+
+        /* Toast de memória */
+        #toast-memoria {
+            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--bg2); color: var(--accent); border: 1px solid var(--accent);
+            padding: 10px 18px; border-radius: 10px; font-size: 13px; z-index: 999;
+            opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s;
+            max-width: 90%; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        #toast-memoria.show {
+            opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto;
+        }
     </style>
 </head>
 <body>
@@ -218,21 +234,21 @@
         <button class="btn-login" onclick="login()">ACESSAR</button>
         <button class="btn-register" onclick="registrar()">CADASTRAR USUÁRIO</button>
         <p id="auth-msg"></p>
-        <button class="btn-dev" onclick="modoDesenvolvedor()">🛠️ Modo Desenvolvedor</button>
+        <button class="btn-dev" onclick="modoDesenvolvedor()">[ DEV ] Modo Desenvolvedor</button>
     </div>
 
     <!-- SIDEBAR -->
     <div id="overlay-menu" onclick="fecharMenu()"></div>
     <div id="sidebar">
         <div class="sidebar-header">J.A.R.V.I.S.</div>
-        <button class="menu-btn-item" onclick="novaConversa()">➕ Nova Conversa</button>
+        <button class="menu-btn-item" onclick="novaConversa()">+ Nova Conversa</button>
         <div class="chat-list" id="chat-list"></div>
-        <button class="menu-btn-item" id="btn-toggle-voz" onclick="toggleVoz()">🔊 Resposta por Voz: LIGADA</button>
-        <button class="menu-btn-item" onclick="toggleTheme()">🌓 Alternar Tema</button>
-        <button class="menu-btn-item" onclick="abrirGerenciarMemorias()">🧠 Gerenciar Memórias</button>
-        <button class="menu-btn-item" onclick="abrirConfig()">⚙️ Configurações</button>
-        <button class="menu-btn-item menu-btn-danger" onclick="confirmarLimpeza()">🗑️ Limpar Conversa Atual</button>
-        <button class="menu-btn-item" style="border-top:1px solid var(--border);margin-top:8px;" onclick="fazerLogout()">🚪 Sair</button>
+        <button class="menu-btn-item" id="btn-toggle-voz" onclick="toggleVoz()">Voz: LIGADA</button>
+        <button class="menu-btn-item" onclick="toggleTheme()">Tema</button>
+        <button class="menu-btn-item" onclick="abrirGerenciarMemorias()">Memorias</button>
+        <button class="menu-btn-item" onclick="abrirConfig()">Configuracoes</button>
+        <button class="menu-btn-item menu-btn-danger" onclick="confirmarLimpeza()">Limpar Conversa</button>
+        <button class="menu-btn-item" style="border-top:1px solid var(--border);margin-top:8px;" onclick="fazerLogout()">Sair</button>
     </div>
 
     <!-- MEMÓRIAS -->
@@ -284,8 +300,15 @@
                     <option value="false">Não</option>
                 </select>
             </div>
+            <div class="config-row">
+                <label>Perguntar antes de memorizar</label>
+                <select id="cfg-confirm-mem">
+                    <option value="false">Não (salva automaticamente)</option>
+                    <option value="true">Sim (pedir confirmação)</option>
+                </select>
+            </div>
             <button class="btn-primary" onclick="salvarConfig()">Salvar Configurações</button>
-            <button class="menu-btn-item menu-btn-danger" style="margin-top:20px;justify-content:center;border:1px solid var(--danger);border-radius:8px;" onclick="confirmarApagarTudo()">🧨 Apagar Todos os Dados</button>
+            <button class="menu-btn-item menu-btn-danger" style="margin-top:20px;justify-content:center;border:1px solid var(--danger);border-radius:8px;" onclick="confirmarApagarTudo()">Apagar Todos os Dados</button>
         </div>
     </div>
 
@@ -294,17 +317,18 @@
         <div class="header">
             <button class="btn-hamburguer" onclick="abrirMenu()">☰</button>
             <span class="header-title" id="header-title">J.A.R.V.I.S.</span>
-            <button class="header-btn" onclick="novaConversa()" title="Nova conversa">＋</button>
+            <button class="header-btn" onclick="novaConversa()" title="Nova conversa">+</button>
         </div>
         <div class="chat-area" id="chat"></div>
         <div class="typing-indicator" id="typing">J.A.R.V.I.S. está pensando<span>.</span><span>.</span><span>.</span></div>
-        <div id="preview-container">📎 Arquivo pronto para envio</div>
+        <div id="toast-memoria"></div>
+        <div id="preview-container">[arquivo] pronto para envio</div>
         <div class="suggestions" id="suggestions"></div>
         <div class="input-wrapper">
             <div class="pill-container">
                 <label for="arquivo" class="icon-btn-pill" style="font-size:26px;font-weight:300;">+</label>
                 <input type="file" id="arquivo" accept="image/*,.txt,.md,.csv,.json,.pdf" style="display:none;" onchange="previewArquivo()">
-                <input type="text" id="campoTexto" placeholder="Mensagem..." onkeypress="handleEnter(event)">
+                <textarea id="campoTexto" placeholder="Mensagem..." rows="1" oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
                 <button id="btn-mic" class="icon-btn-pill" onclick="toggleMic()">
                     <svg width="18" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
                 </button>
@@ -367,6 +391,7 @@ let vozAtivada = true;
 let apiKey = '';
 let modeloPadrao = 'openai/gpt-oss-120b';
 let usarWebSearch = true;
+let confirmarMemoria = false;
 let arquivoBase64 = null;
 let arquivoNome = null;
 let arquivoTipo = null;
@@ -374,11 +399,11 @@ let abortController = null;
 let gerando = false;
 
 // ===================== ICONS =====================
-const ICON_COPY = '📋';
-const ICON_CHECK = '✅';
-const ICON_REGEN = '🔄';
-const ICON_EDIT = '✏️';
-const ICON_TRASH = '🗑️';
+const ICON_COPY = '[copiar]';
+const ICON_CHECK = '[ok]';
+const ICON_REGEN = '[regen]';
+const ICON_EDIT = '[editar]';
+const ICON_TRASH = '[excluir]';
 
 // ===================== INIT =====================
 window.onload = async () => {
@@ -393,7 +418,9 @@ function renderSuggestions() {
     el.innerHTML = SUGGESTIONS.map(s => `<div class="suggestion-chip" onclick="usarSugestao('${s.replace(/'/g,"\\'")}')">${s}</div>`).join('');
 }
 window.usarSugestao = (txt) => {
-    document.getElementById('campoTexto').value = txt;
+    const el = document.getElementById('campoTexto');
+    el.value = txt;
+    autoResize(el);
     document.getElementById('suggestions').style.display = 'none';
 };
 
@@ -446,6 +473,7 @@ function carregarTudo() {
     apiKey = localStorage.getItem('jarvis_apikey_' + currentUser) || localStorage.getItem('jarvis_apikey') || '';
     modeloPadrao = localStorage.getItem('jarvis_model_' + currentUser) || 'openai/gpt-oss-120b';
     usarWebSearch = localStorage.getItem('jarvis_websearch_' + currentUser) !== 'false';
+    confirmarMemoria = localStorage.getItem('jarvis_confirm_mem_' + currentUser) === 'true';
     vozAtivada = localStorage.getItem('jarvis_voz') !== 'false';
     atualizarTextoBotaoVoz();
 
@@ -478,6 +506,7 @@ function carregarTudo() {
     document.getElementById('cfg-api-key').value = apiKey;
     document.getElementById('cfg-model').value = modeloPadrao;
     document.getElementById('cfg-websearch').value = String(usarWebSearch);
+    document.getElementById('cfg-confirm-mem').value = String(confirmarMemoria);
 }
 
 function salvarConversas() {
@@ -486,6 +515,13 @@ function salvarConversas() {
 }
 function salvarFatos() {
     localStorage.setItem('fatos_' + currentUser, JSON.stringify(fatosMemoria));
+}
+function mostrarToastMemoria(fato) {
+    const toast = document.getElementById('toast-memoria');
+    if (!toast) return;
+    toast.innerText = 'Memoria salva: ' + (fato.length > 60 ? fato.slice(0, 57) + '...' : fato);
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3200);
 }
 
 // ===================== CONVERSAS =====================
@@ -540,8 +576,23 @@ window.apagarConversa = (id) => {
 // ===================== SYSTEM PROMPT + SEMANTIC MEMORY =====================
 function montarSystemPrompt(query = null) {
     let base = `Você é o J.A.R.V.I.S., assistente pessoal criado por Tony Stark. O usuário atual se chama ${currentUser}.
-Responda de forma direta, polida e útil. Use Markdown quando apropriado (negrito, listas, blocos de código).
-Você tem acesso a busca na web quando necessário (tool browser_search). Use-a para informações atuais.`;
+
+REGRAS DE RESPOSTA (obrigatórias):
+- Responda de forma CURTA e DIRETA. Vá direto ao ponto.
+- Dê APENAS o que foi pedido. Não adicione introduções longas, conclusões, sugestões extras ou explicações não solicitadas.
+- Se a pergunta for simples, responda em 1 a 3 frases no máximo.
+- Só use listas ou blocos de código quando realmente necessário.
+- Use Markdown apenas quando ajudar a clareza (negrito, código).
+- Você tem acesso a busca na web (tool browser_search). Use-a somente quando a informação for atual ou você não souber.
+
+MEMÓRIA AUTOMÁTICA:
+- Se o usuário pedir explicitamente para lembrar/guardar/memorizar algo, ou se a informação for pessoal e claramente útil para lembrar depois (preferências, dados pessoais, projetos, rotinas), adicione no FINAL da sua resposta (e somente no final) a tag:
+[[LEMBRAR: fato conciso aqui]]
+- Use a tag no máximo uma vez por resposta. O fato deve ser curto e em terceira pessoa ou direto (ex: "Prefere café sem açúcar", "Trabalha com Python").
+- Não explique a tag. Ela é invisível para o usuário final.
+- Se não houver nada relevante para lembrar, NÃO use a tag.
+
+Seja conciso como um assistente eficiente.`;
 
     // Semantic retrieval
     let fatosRelevantes = fatosMemoria;
@@ -609,6 +660,7 @@ window.adicionarFato = async () => {
     salvarFatos();
     campo.value = '';
     renderizarListaFatos();
+    mostrarToastMemoria(texto);
     // atualiza system da conversa atual
     if (conversas[conversaAtualId]) {
         conversas[conversaAtualId].messages[0] = { role: 'system', content: montarSystemPrompt() };
@@ -637,6 +689,7 @@ window.abrirConfig = () => {
     document.getElementById('cfg-api-key').value = apiKey;
     document.getElementById('cfg-model').value = modeloPadrao;
     document.getElementById('cfg-websearch').value = String(usarWebSearch);
+    document.getElementById('cfg-confirm-mem').value = String(confirmarMemoria);
     document.getElementById('overlay-config').style.display = 'block';
     setTimeout(() => document.getElementById('painel-config').style.right = '0', 10);
     fecharMenu();
@@ -649,9 +702,11 @@ window.salvarConfig = () => {
     apiKey = document.getElementById('cfg-api-key').value.trim();
     modeloPadrao = document.getElementById('cfg-model').value;
     usarWebSearch = document.getElementById('cfg-websearch').value === 'true';
+    confirmarMemoria = document.getElementById('cfg-confirm-mem').value === 'true';
     localStorage.setItem('jarvis_apikey_' + currentUser, apiKey);
     localStorage.setItem('jarvis_model_' + currentUser, modeloPadrao);
     localStorage.setItem('jarvis_websearch_' + currentUser, String(usarWebSearch));
+    localStorage.setItem('jarvis_confirm_mem_' + currentUser, String(confirmarMemoria));
     alert('Configurações salvas!');
     fecharConfig();
 };
@@ -674,7 +729,7 @@ window.toggleVoz = () => {
 };
 function atualizarTextoBotaoVoz() {
     const btn = document.getElementById('btn-toggle-voz');
-    if (btn) btn.innerText = vozAtivada ? '🔊 Resposta por Voz: LIGADA' : '🔇 Resposta por Voz: DESLIGADA';
+    if (btn) btn.innerText = vozAtivada ? 'Voz: LIGADA' : 'Voz: DESLIGADA';
 }
 
 // ===================== MENU =====================
@@ -795,7 +850,7 @@ window.previewArquivo = () => {
                 canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                 arquivoBase64 = canvas.toDataURL('image/jpeg', 0.7);
                 document.getElementById('preview-container').style.display = 'block';
-                document.getElementById('preview-container').innerText = '📷 Imagem pronta';
+                document.getElementById('preview-container').innerText = '[imagem] pronta';
             };
             img.src = e.target.result;
         };
@@ -806,7 +861,7 @@ window.previewArquivo = () => {
         reader.onload = e => {
             arquivoBase64 = e.target.result; // text content
             document.getElementById('preview-container').style.display = 'block';
-            document.getElementById('preview-container').innerText = `📄 ${file.name}`;
+            document.getElementById('preview-container').innerText = `[arquivo] ${file.name}`;
         };
         reader.readAsText(file);
     }
@@ -822,7 +877,9 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     recognition.onstart = () => document.getElementById('btn-mic').classList.add('mic-recording');
     recognition.onend = () => document.getElementById('btn-mic').classList.remove('mic-recording');
     recognition.onresult = e => {
-        document.getElementById('campoTexto').value = e.results[0][0].transcript;
+        const el = document.getElementById('campoTexto');
+        el.value = e.results[0][0].transcript;
+        autoResize(el);
         enviarMensagem();
     };
 }
@@ -839,7 +896,16 @@ function falarJarvis(texto) {
 }
 
 // ===================== API + STREAMING + TOOLS =====================
-window.handleEnter = (e) => { if (e.key === 'Enter' && !gerando) enviarMensagem(); };
+window.handleKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!gerando) enviarMensagem();
+    }
+};
+window.autoResize = (el) => {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+};
 
 window.enviarMensagem = async () => {
     if (gerando) return;
@@ -864,6 +930,7 @@ window.enviarMensagem = async () => {
     msgs.push({ role: 'user', content: contentToPush });
     adicionarChat('user', contentToPush, msgs.length - 1);
     campo.value = '';
+    campo.style.height = 'auto';
     const tinhaImagem = arquivoBase64 && arquivoTipo?.startsWith('image/');
     const imgData = arquivoBase64;
     arquivoBase64 = null; arquivoNome = null; arquivoTipo = null;
@@ -926,7 +993,7 @@ async function enviarParaAPI(imageBase64 = null) {
         const body = {
             model,
             messages: apiMessages,
-            max_tokens: 2048,
+            max_tokens: 1024,
             stream: true,
             temperature: 0.7
         };
@@ -978,10 +1045,38 @@ async function enviarParaAPI(imageBase64 = null) {
         // finaliza
         document.getElementById(`wrap-${tempId}`)?.remove();
         if (fullText) {
-            msgs.push({ role: 'assistant', content: fullText });
-            adicionarChat('jarvis', fullText, msgs.length - 1);
+            // Extrai e processa memória automática
+            const memoriaMatch = fullText.match(/\[\[LEMBRAR:\s*(.+?)\]\]/i);
+            let textoLimpo = fullText.replace(/\[\[LEMBRAR:\s*.+?\]\]/gi, '').trim();
+            if (memoriaMatch) {
+                const fato = memoriaMatch[1].trim();
+                if (fato) {
+                    const jaExiste = fatosMemoria.some(f => f.text.toLowerCase() === fato.toLowerCase());
+                    if (!jaExiste) {
+                        const salvar = async () => {
+                            try {
+                                const emb = await getEmbedding(fato);
+                                fatosMemoria.push({ text: fato, embedding: emb });
+                            } catch {
+                                fatosMemoria.push({ text: fato, embedding: null });
+                            }
+                            salvarFatos();
+                            mostrarToastMemoria(fato);
+                        };
+                        if (confirmarMemoria) {
+                            if (confirm('Salvar na memória?\n\n"' + fato + '"')) {
+                                salvar();
+                            }
+                        } else {
+                            salvar();
+                        }
+                    }
+                }
+            }
+            msgs.push({ role: 'assistant', content: textoLimpo });
+            adicionarChat('jarvis', textoLimpo, msgs.length - 1);
             salvarConversas();
-            falarJarvis(fullText);
+            falarJarvis(textoLimpo);
         } else {
             throw new Error('Resposta vazia da API');
         }
