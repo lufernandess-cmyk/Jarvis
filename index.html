@@ -74,7 +74,9 @@
         .sidebar-header {
             color: var(--accent); font-weight: bold; text-align: center;
             padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+            letter-spacing: 3px; font-size: 15px;
         }
+        .menu-btn-item svg { flex-shrink: 0; opacity: 0.9; }
         .menu-btn-item {
             background: transparent; color: var(--text); border: none;
             padding: 13px 18px; text-align: left; font-size: 15px; cursor: pointer;
@@ -83,6 +85,12 @@
         .menu-btn-item:hover { background: var(--bg3); color: var(--accent); }
         .menu-btn-danger { color: var(--danger); }
         .chat-list { flex: 1; overflow-y: auto; padding: 8px 10px; }
+        .chat-search-wrap { padding: 0 10px 8px; }
+        .chat-search {
+            width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--bg3); color: var(--text); outline: none; font-size: 13px;
+        }
+        .chat-search::placeholder { color: var(--text-muted); }
         .chat-item {
             padding: 10px 12px; border-radius: 8px; margin-bottom: 4px; cursor: pointer;
             font-size: 13px; background: var(--bg3); border: 1px solid transparent;
@@ -92,6 +100,11 @@
         .chat-item:hover { border-color: var(--border); }
         .chat-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .chat-item-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 14px; padding: 0 4px; }
+        .chat-item-snippet {
+            font-size: 11px; color: var(--text-muted); margin-top: 3px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;
+        }
+        .chat-list-empty { color: var(--text-muted); font-size: 12px; text-align: center; padding: 16px 8px; }
 
         /* ===== APP ===== */
         #app-container { display: none; flex-direction: column; height: 100%; width: 100%; }
@@ -103,7 +116,11 @@
         .btn-hamburguer, .header-btn {
             background: transparent; border: none; color: var(--accent); font-size: 22px; cursor: pointer; padding: 4px 6px;
         }
-        .header-title { flex: 1; text-align: center; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .header-title {
+            flex: 1; text-align: center; font-size: 17px; letter-spacing: 3px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            font-weight: bold; text-transform: uppercase;
+        }
 
         .chat-area {
             flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px;
@@ -223,9 +240,18 @@
         #toast-memoria.show {
             opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto;
         }
+
+        /* Status embeddings */
+        #emb-status {
+            position: fixed; top: 8px; right: 12px; font-size: 11px; color: var(--text-muted);
+            z-index: 50; opacity: 0.7; pointer-events: none;
+        }
+        #emb-status.ready { color: var(--accent); }
     </style>
 </head>
 <body>
+    <div id="emb-status">Embeddings…</div>
+
     <!-- AUTH -->
     <div id="auth-overlay">
         <h2>J.A.R.V.I.S. Auth</h2>
@@ -241,14 +267,18 @@
     <div id="overlay-menu" onclick="fecharMenu()"></div>
     <div id="sidebar">
         <div class="sidebar-header">J.A.R.V.I.S.</div>
-        <button class="menu-btn-item" onclick="novaConversa()">+ Nova Conversa</button>
+        <button class="menu-btn-item" onclick="novaConversa()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nova Conversa</button>
+        <div class="chat-search-wrap">
+            <input type="search" class="chat-search" id="busca-conversas" placeholder="Buscar conversas…" oninput="filtrarConversas(this.value)" autocomplete="off">
+        </div>
         <div class="chat-list" id="chat-list"></div>
-        <button class="menu-btn-item" id="btn-toggle-voz" onclick="toggleVoz()">Voz: LIGADA</button>
-        <button class="menu-btn-item" onclick="toggleTheme()">Tema</button>
-        <button class="menu-btn-item" onclick="abrirGerenciarMemorias()">Memorias</button>
-        <button class="menu-btn-item" onclick="abrirConfig()">Configuracoes</button>
-        <button class="menu-btn-item menu-btn-danger" onclick="confirmarLimpeza()">Limpar Conversa</button>
-        <button class="menu-btn-item" style="border-top:1px solid var(--border);margin-top:8px;" onclick="fazerLogout()">Sair</button>
+        <button class="menu-btn-item" onclick="resumirConversa()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Resumir conversa</button>
+        <button class="menu-btn-item" id="btn-toggle-voz" onclick="toggleVoz()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg> Voz: LIGADA</button>
+        <button class="menu-btn-item" onclick="toggleTheme()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> Tema</button>
+        <button class="menu-btn-item" onclick="abrirGerenciarMemorias()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Memorias</button>
+        <button class="menu-btn-item" onclick="abrirConfig()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg> Configuracoes</button>
+        <button class="menu-btn-item menu-btn-danger" onclick="confirmarLimpeza()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpar Conversa</button>
+        <button class="menu-btn-item" style="border-top:1px solid var(--border);margin-top:8px;" onclick="fazerLogout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sair</button>
     </div>
 
     <!-- MEMÓRIAS -->
@@ -260,7 +290,7 @@
         </div>
         <div class="lista-memorias">
             <p style="color:var(--text-muted);font-size:12px;margin-bottom:14px;line-height:1.5;">
-                Fatos permanentes com busca semântica (embeddings). O J.A.R.V.I.S. recupera automaticamente os mais relevantes.
+                Fatos permanentes com busca semântica (embeddings). O J.A.R.V.I.S. recupera automaticamente os mais relevantes para cada pergunta.
             </p>
             <div id="lista-fatos"></div>
         </div>
@@ -279,8 +309,15 @@
         </div>
         <div class="lista-memorias">
             <div class="config-row">
-                <label>Chave da API Groq</label>
+                <label>Chave da API Groq (principal)</label>
                 <input type="password" id="cfg-api-key" placeholder="gsk_...">
+            </div>
+            <div class="config-row">
+                <label>Chave da API Groq (reserva — alterna se a principal esgotar)</label>
+                <input type="password" id="cfg-api-key-2" placeholder="gsk_... (opcional)">
+                <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">
+                    Com duas chaves, o app troca automaticamente em erro 429 / rate limit / quota.
+                </p>
             </div>
             <div class="config-row">
                 <label>Modelo padrão</label>
@@ -290,7 +327,9 @@
                     <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
                     <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
                     <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (visão)</option>
+                    <option value="qwen/qwen3-32b">Qwen3 32B</option>
                     <option value="groq/compound">Groq Compound (ferramentas nativas)</option>
+                    <option value="groq/compound-mini">Groq Compound Mini (mais rápido)</option>
                 </select>
             </div>
             <div class="config-row">
@@ -305,6 +344,15 @@
                 <select id="cfg-confirm-mem">
                     <option value="false">Não (salva automaticamente)</option>
                     <option value="true">Sim (pedir confirmação)</option>
+                </select>
+            </div>
+            <div class="config-row">
+                <label>Máx. mensagens no histórico (API)</label>
+                <select id="cfg-max-hist">
+                    <option value="16">16</option>
+                    <option value="24" selected>24</option>
+                    <option value="32">32</option>
+                    <option value="48">48</option>
                 </select>
             </div>
             <div class="config-row">
@@ -350,7 +398,7 @@
         <div class="input-wrapper">
             <div class="pill-container">
                 <label for="arquivo" class="icon-btn-pill"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></label>
-                <input type="file" id="arquivo" accept="image/*,.txt,.md,.csv,.json,.pdf" style="display:none;" onchange="previewArquivo()">
+                <input type="file" id="arquivo" accept="image/*,.txt,.md,.csv,.json,.pdf,.zip,.docx,.xml,.html,.htm,.js,.ts,.py,.java,.c,.cpp,.h,.css,.yaml,.yml,.toml,.ini,.log,.sql,.r,.go,.rs,.sh,.bat,.env" style="display:none;" onchange="previewArquivo()">
                 <textarea id="campoTexto" placeholder="Mensagem..." rows="1" oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
                 <button id="btn-mic" class="icon-btn-pill" onclick="toggleMic()">
                     <svg width="18" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
@@ -367,23 +415,38 @@
 // ===================== EMBEDDINGS (Transformers.js) =====================
 let embedder = null;
 let embeddingsReady = false;
+let codeStore = new Map(); // id -> código puro (evita XSS no botão copiar)
+let codeCounter = 0;
 
 async function initEmbeddings() {
+    const status = document.getElementById('emb-status');
     try {
         const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
         embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { quantized: true });
         embeddingsReady = true;
+        if (status) {
+            status.textContent = 'Embeddings OK';
+            status.classList.add('ready');
+            setTimeout(() => { status.style.opacity = '0'; }, 2500);
+        }
         console.log('Embeddings prontos');
+        // Preenche embeddings faltantes dos fatos já carregados
+        await garantirEmbeddingsFatos();
     } catch (e) {
         console.warn('Embeddings não carregaram, usando fallback keyword:', e);
         embeddingsReady = false;
+        if (status) status.textContent = 'Embeddings offline';
     }
 }
 
 async function getEmbedding(text) {
     if (!embeddingsReady || !embedder) return null;
-    const out = await embedder(text, { pooling: 'mean', normalize: true });
-    return Array.from(out.data);
+    try {
+        const out = await embedder(text, { pooling: 'mean', normalize: true });
+        return Array.from(out.data);
+    } catch {
+        return null;
+    }
 }
 
 function cosineSim(a, b) {
@@ -397,6 +460,18 @@ function cosineSim(a, b) {
     return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-8);
 }
 
+async function garantirEmbeddingsFatos() {
+    if (!embeddingsReady || !fatosMemoria.length) return;
+    let mudou = false;
+    for (const f of fatosMemoria) {
+        if (!f.embedding || !Array.isArray(f.embedding) || f.embedding.length === 0) {
+            f.embedding = await getEmbedding(f.text);
+            mudou = true;
+        }
+    }
+    if (mudou) salvarFatos();
+}
+
 // ===================== STATE =====================
 const SUGGESTIONS = [
     "Qual a previsão do tempo hoje?",
@@ -405,6 +480,25 @@ const SUGGESTIONS = [
     "Crie um plano de estudos para programação",
     "O que você lembra sobre mim?"
 ];
+
+const MAX_FILE_CHARS = 14000;
+const MAX_ZIP_FILES = 40;
+const MAX_PDF_PAGES = 30;
+const DEFAULT_MAX_HIST = 24;
+/** Arquivos menores: enviados inteiros. Maiores: só chunks relevantes (economiza tokens). */
+const FULL_FILE_THRESHOLD = 2800;
+const FILE_TOP_CHUNKS = 6;
+const CHUNK_SIZE = 700;
+const CHUNK_OVERLAP = 80;
+
+const TEXT_EXTENSIONS = new Set([
+    'txt','md','markdown','csv','tsv','json','jsonl','xml','html','htm',
+    'js','mjs','cjs','ts','tsx','jsx','py','java','c','cpp','cc','h','hpp',
+    'css','scss','less','yaml','yml','toml','ini','cfg','conf','log','sql',
+    'r','go','rs','sh','bash','bat','ps1','env','gitignore','dockerfile',
+    'makefile','cmake','rb','php','swift','kt','scala','lua','pl','pm',
+    'vue','svelte','astro','tex','rst','org','adoc'
+]);
 
 let currentUser = null;
 let conversas = {};          // { id: { title, messages, created } }
@@ -415,14 +509,56 @@ let vozSelecionada = '';
 let vozPitch = 0.75;
 let vozRate = 1.05;
 let apiKey = '';
+let apiKey2 = '';
+let apiKeyIndex = 0; // 0 = principal, 1 = reserva
 let modeloPadrao = 'openai/gpt-oss-120b';
+
+function chavesDisponiveis() {
+    return [apiKey, apiKey2].filter(k => k && k.trim());
+}
+function chaveAtual() {
+    const keys = chavesDisponiveis();
+    if (!keys.length) return '';
+    return keys[apiKeyIndex % keys.length];
+}
+function rotacionarChave(motivo = '') {
+    const keys = chavesDisponiveis();
+    if (keys.length < 2) return false;
+    const anterior = apiKeyIndex % keys.length;
+    apiKeyIndex = (apiKeyIndex + 1) % keys.length;
+    localStorage.setItem('jarvis_apikey_idx_' + currentUser, String(apiKeyIndex));
+    console.log(`[JARVIS] Trocou chave API ${anterior + 1} → ${apiKeyIndex + 1}` + (motivo ? ` (${motivo})` : ''));
+    return true;
+}
+function isRateLimitError(status, message = '') {
+    if (status === 429) return true;
+    const m = (message || '').toLowerCase();
+    return /rate limit|quota|tokens per day|tpm|rpm|too many requests|insufficient_quota|billing/i.test(m);
+}
 let usarWebSearch = true;
 let confirmarMemoria = false;
-let arquivoBase64 = null;
+let maxHist = DEFAULT_MAX_HIST;
+let arquivoBase64 = null;      // imagem base64 OU texto completo (só enquanto pendente)
 let arquivoNome = null;
 let arquivoTipo = null;
+let arquivoTruncado = false;
+/** Conteúdo de arquivo de texto processado para economia de tokens */
+let arquivoPendente = null;    // { nome, tipo, fullText, chunks:[{text,embedding}], modo:'full'|'rag' }
+/** true enquanto PDF/ZIP/DOCX/texto ainda está sendo indexado */
+let arquivoProcessando = false;
+/** Arquivos já anexados por conversa (para perguntas posteriores sem reenviar tudo) */
+let arquivosPorConversa = {};  // { conversaId: [ arquivoPendente, ... ] }
 let abortController = null;
 let gerando = false;
+
+function safeJsonParse(raw, fallback) {
+    try {
+        if (!raw) return fallback;
+        return JSON.parse(raw);
+    } catch {
+        return fallback;
+    }
+}
 
 // ===================== ICONS (SVG monocromaticos) =====================
 const ICON_COPY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
@@ -430,11 +566,8 @@ const ICON_CHECK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" 
 const ICON_REGEN = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
 const ICON_EDIT = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
 const ICON_TRASH = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
-const ICON_PLUS = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-const ICON_MENU = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
 const ICON_IMG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;
 const ICON_FILE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
-const ICON_STOP = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`;
 
 // ===================== INIT =====================
 window.onload = async () => {
@@ -468,7 +601,7 @@ window.registrar = () => {
     const user = document.getElementById('username').value.trim();
     const pass = document.getElementById('password').value.trim();
     if (!user || !pass) return showAlert('Preencha nome e senha!');
-    const users = JSON.parse(localStorage.getItem('jarvisUsers') || '{}');
+    const users = safeJsonParse(localStorage.getItem('jarvisUsers'), {});
     if (users[user]) return showAlert('Usuário já existe!');
     users[user] = pass;
     localStorage.setItem('jarvisUsers', JSON.stringify(users));
@@ -477,7 +610,7 @@ window.registrar = () => {
 window.login = () => {
     const user = document.getElementById('username').value.trim();
     const pass = document.getElementById('password').value.trim();
-    const users = JSON.parse(localStorage.getItem('jarvisUsers') || '{}');
+    const users = safeJsonParse(localStorage.getItem('jarvisUsers'), {});
     if (users[user] && users[user] === pass) {
         localStorage.setItem('currentUser', user);
         checkAuth();
@@ -502,9 +635,12 @@ function showAlert(msg, color = '#FF4444') {
 // ===================== LOAD / SAVE =====================
 function carregarTudo() {
     apiKey = localStorage.getItem('jarvis_apikey_' + currentUser) || localStorage.getItem('jarvis_apikey') || '';
+    apiKey2 = localStorage.getItem('jarvis_apikey2_' + currentUser) || '';
+    apiKeyIndex = parseInt(localStorage.getItem('jarvis_apikey_idx_' + currentUser) || '0', 10) || 0;
     modeloPadrao = localStorage.getItem('jarvis_model_' + currentUser) || 'openai/gpt-oss-120b';
     usarWebSearch = localStorage.getItem('jarvis_websearch_' + currentUser) !== 'false';
     confirmarMemoria = localStorage.getItem('jarvis_confirm_mem_' + currentUser) === 'true';
+    maxHist = parseInt(localStorage.getItem('jarvis_max_hist_' + currentUser) || String(DEFAULT_MAX_HIST), 10) || DEFAULT_MAX_HIST;
     vozAtivada = localStorage.getItem('jarvis_voz') !== 'false';
     vozSelecionada = localStorage.getItem('jarvis_voice_' + currentUser) || '';
     vozPitch = parseFloat(localStorage.getItem('jarvis_pitch_' + currentUser) || '0.75');
@@ -515,18 +651,13 @@ function carregarTudo() {
     const theme = localStorage.getItem('jarvis_theme') || 'dark';
     document.documentElement.setAttribute('data-theme', theme);
 
-    const salvos = localStorage.getItem('conversas_' + currentUser);
-    conversas = salvos ? JSON.parse(salvos) : {};
-    const fatosSalvos = localStorage.getItem('fatos_' + currentUser);
-    fatosMemoria = fatosSalvos ? JSON.parse(fatosSalvos) : [];
+    conversas = safeJsonParse(localStorage.getItem('conversas_' + currentUser), {});
+    fatosMemoria = safeJsonParse(localStorage.getItem('fatos_' + currentUser), []);
+    if (!conversas || typeof conversas !== 'object') conversas = {};
+    if (!Array.isArray(fatosMemoria)) fatosMemoria = [];
 
-    // garantir embeddings dos fatos (async)
-    fatosMemoria.forEach(async (f, i) => {
-        if (!f.embedding && embeddingsReady) {
-            f.embedding = await getEmbedding(f.text);
-            salvarFatos();
-        }
-    });
+    // embeddings serão preenchidos quando o modelo de embedding estiver pronto
+    if (embeddingsReady) garantirEmbeddingsFatos();
 
     const lastId = localStorage.getItem('conversaAtual_' + currentUser);
     if (lastId && conversas[lastId]) {
@@ -539,9 +670,12 @@ function carregarTudo() {
     renderChatList();
     renderizarChat();
     document.getElementById('cfg-api-key').value = apiKey;
+    const k2el = document.getElementById('cfg-api-key-2');
+    if (k2el) k2el.value = apiKey2;
     document.getElementById('cfg-model').value = modeloPadrao;
     document.getElementById('cfg-websearch').value = String(usarWebSearch);
     document.getElementById('cfg-confirm-mem').value = String(confirmarMemoria);
+    document.getElementById('cfg-max-hist').value = String(maxHist);
 }
 
 function salvarConversas() {
@@ -559,12 +693,25 @@ function mostrarToastMemoria(fato) {
     setTimeout(() => toast.classList.remove('show'), 3200);
 }
 
+/** Atualiza a mensagem system da conversa atual com os fatos relevantes (ou todos se poucas). */
+async function atualizarSystemDaConversaAtual(query = null) {
+    if (!conversas[conversaAtualId]) return;
+    const relevantes = query
+        ? await recuperarFatosRelevantes(query, 8)
+        : fatosMemoria.slice(0, 12);
+    conversas[conversaAtualId].messages[0] = {
+        role: 'system',
+        content: montarSystemPrompt(relevantes)
+    };
+    salvarConversas();
+}
+
 // ===================== CONVERSAS =====================
 window.novaConversa = (silent = false) => {
     const id = 'c_' + Date.now();
     conversas[id] = {
         title: 'Nova conversa',
-        messages: [{ role: 'system', content: montarSystemPrompt() }],
+        messages: [{ role: 'system', content: montarSystemPrompt(fatosMemoria.slice(0, 12)) }],
         created: Date.now()
     };
     conversaAtualId = id;
@@ -573,21 +720,194 @@ window.novaConversa = (silent = false) => {
     renderizarChat();
     if (!silent) fecharMenu();
 };
+let buscaConversasQuery = '';
+
+function normalizarBusca(s) {
+    return String(s || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
+function textoBuscavelConversa(c) {
+    if (!c) return '';
+    const partes = [c.title || ''];
+    (c.messages || []).forEach(m => {
+        if (m.role === 'user' || m.role === 'assistant') {
+            const t = typeof m.content === 'string' ? m.content : '';
+            if (t) partes.push(t);
+        }
+    });
+    return normalizarBusca(partes.join('\n'));
+}
+
+function snippetBusca(c, q) {
+    if (!q) return '';
+    const qn = normalizarBusca(q);
+    const msgs = (c.messages || []).filter(m => m.role === 'user' || m.role === 'assistant');
+    for (const m of msgs) {
+        const t = typeof m.content === 'string' ? m.content : '';
+        const tn = normalizarBusca(t);
+        const idx = tn.indexOf(qn);
+        if (idx >= 0) {
+            // mapeia índice aproximado no texto original
+            const start = Math.max(0, idx - 24);
+            const extrato = (start > 0 ? '…' : '') + t.slice(start, start + 72).replace(/\s+/g, ' ').trim();
+            return extrato + (start + 72 < t.length ? '…' : '');
+        }
+    }
+    // match só no título
+    if (normalizarBusca(c.title || '').includes(qn)) return '';
+    return '';
+}
+
+window.filtrarConversas = (q) => {
+    buscaConversasQuery = (q || '').trim();
+    renderChatList();
+};
+
 function renderChatList() {
     const list = document.getElementById('chat-list');
+    if (!list) return;
     list.innerHTML = '';
-    const ids = Object.keys(conversas).sort((a,b) => (conversas[b].created||0) - (conversas[a].created||0));
-    ids.forEach(id => {
-        const c = conversas[id];
-        const div = document.createElement('div');
-        div.className = 'chat-item' + (id === conversaAtualId ? ' active' : '');
-        div.innerHTML = `<span class="chat-item-title" onclick="trocarConversa('${id}')">${c.title || 'Sem título'}</span>
-                         <button class="chat-item-del" onclick="event.stopPropagation();apagarConversa('${id}')">×</button>`;
-        list.appendChild(div);
-    });
-    const titulo = conversas[conversaAtualId]?.title || 'J.A.R.V.I.S.';
-    document.getElementById('header-title').innerText = titulo;
+    const q = buscaConversasQuery;
+    const qn = normalizarBusca(q);
+    let ids = Object.keys(conversas).sort((a, b) => (conversas[b].created || 0) - (conversas[a].created || 0));
+    if (qn) {
+        ids = ids.filter(id => textoBuscavelConversa(conversas[id]).includes(qn));
+    }
+    if (!ids.length) {
+        list.innerHTML = `<div class="chat-list-empty">${q ? 'Nenhuma conversa encontrada.' : 'Nenhuma conversa ainda.'}</div>`;
+    } else {
+        ids.forEach(id => {
+            const c = conversas[id];
+            const div = document.createElement('div');
+            div.className = 'chat-item' + (id === conversaAtualId ? ' active' : '');
+            const snip = q ? snippetBusca(c, q) : '';
+            div.innerHTML = `<div style="flex:1;min-width:0;cursor:pointer;" onclick="trocarConversa('${id}')">
+                <div class="chat-item-title">${escapeHtml(c.title || 'Sem título')}</div>
+                ${snip ? `<div class="chat-item-snippet">${escapeHtml(snip)}</div>` : ''}
+            </div>
+            <button class="chat-item-del" onclick="event.stopPropagation();apagarConversa('${id}')">×</button>`;
+            list.appendChild(div);
+        });
+    }
+    const ht = document.getElementById('header-title');
+    if (ht) ht.innerText = 'J.A.R.V.I.S.';
 }
+
+/** Resume a conversa atual via API e opcionalmente compacta o histórico */
+window.resumirConversa = async () => {
+    if (gerando) return;
+    if (!chavesDisponiveis().length) {
+        alert('Configure sua chave da API Groq em Configurações.');
+        return;
+    }
+    const conv = conversas[conversaAtualId];
+    if (!conv) return;
+    const dialogos = (conv.messages || []).filter(m => m.role === 'user' || m.role === 'assistant');
+    if (dialogos.length < 2) {
+        alert('É preciso ter pelo menos uma troca de mensagens para resumir.');
+        return;
+    }
+
+    if (!confirm('Gerar um resumo desta conversa?')) return;
+    const compactar = confirm(
+        'Compactar o histórico depois?\n\nOK = substitui as mensagens antigas pelo resumo (economiza tokens)\nCancelar = só adiciona o resumo, mantém tudo'
+    );
+
+    fecharMenu();
+    gerando = true;
+    document.getElementById('btn-send').style.display = 'none';
+    document.getElementById('btn-stop').style.display = 'flex';
+    document.getElementById('typing').style.display = 'block';
+
+    const trecho = dialogos.slice(-40).map(m => {
+        const papel = m.role === 'user' ? 'Usuário' : 'JARVIS';
+        const txt = (typeof m.content === 'string' ? m.content : '').slice(0, 1500);
+        return `${papel}: ${txt}`;
+    }).join('\n\n');
+
+    const body = {
+        model: modeloPadrao.includes('qwen') ? 'llama-3.1-8b-instant' : (modeloPadrao.includes('compound') ? 'llama-3.1-8b-instant' : modeloPadrao),
+        messages: [
+            {
+                role: 'system',
+                content: 'Você resume conversas de forma objetiva em português. Responda só com o resumo, em 5 a 12 linhas, com os pontos principais, decisões e dados citados. Sem introdução nem conclusão meta.'
+            },
+            {
+                role: 'user',
+                content: `Resuma a conversa abaixo:\n\n${trecho}`
+            }
+        ],
+        max_tokens: 800,
+        temperature: 0.3,
+        stream: false
+    };
+
+    abortController = new AbortController();
+    try {
+        const maxTentativas = Math.min(2, chavesDisponiveis().length);
+        let resp = null;
+        let lastErr = '';
+        for (let t = 0; t < maxTentativas; t++) {
+            resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + chaveAtual(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body),
+                signal: abortController.signal
+            });
+            if (resp.ok) break;
+            const errBody = await resp.json().catch(() => ({}));
+            lastErr = errBody.error?.message || `HTTP ${resp.status}`;
+            if (isRateLimitError(resp.status, lastErr) && t < maxTentativas - 1) {
+                rotacionarChave(lastErr.slice(0, 60));
+                continue;
+            }
+            throw new Error(lastErr);
+        }
+        if (!resp?.ok) throw new Error(lastErr || 'Falha ao resumir');
+
+        const data = await resp.json();
+        const resumo = (data.choices?.[0]?.message?.content || '').trim();
+        if (!resumo) throw new Error('Resumo vazio');
+
+        if (compactar) {
+            const system = { role: 'system', content: montarSystemPrompt(fatosMemoria.slice(0, 12)) };
+            const resumoMsg = {
+                role: 'assistant',
+                content: `**Resumo da conversa anterior:**\n\n${resumo}`
+            };
+            conv.messages = [system, resumoMsg];
+            // atualiza título se ainda for genérico
+            if (!conv.title || conv.title === 'Nova conversa' || conv.title.length < 4) {
+                conv.title = ('Resumo: ' + resumo.replace(/\n/g, ' ')).slice(0, 40);
+            }
+            salvarConversas();
+            renderChatList();
+            renderizarChat();
+            falarJarvis(resumo);
+        } else {
+            conv.messages.push({ role: 'assistant', content: `**Resumo da conversa:**\n\n${resumo}` });
+            salvarConversas();
+            renderizarChat();
+            falarJarvis(resumo);
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            alert('Erro ao resumir: ' + (err.message || err));
+        }
+    } finally {
+        gerando = false;
+        document.getElementById('btn-send').style.display = 'flex';
+        document.getElementById('btn-stop').style.display = 'none';
+        document.getElementById('typing').style.display = 'none';
+        abortController = null;
+    }
+};
 window.trocarConversa = (id) => {
     conversaAtualId = id;
     salvarConversas();
@@ -598,6 +918,7 @@ window.trocarConversa = (id) => {
 window.apagarConversa = (id) => {
     if (!confirm('Apagar esta conversa?')) return;
     delete conversas[id];
+    delete arquivosPorConversa[id];
     if (conversaAtualId === id) {
         const rest = Object.keys(conversas);
         if (rest.length) conversaAtualId = rest[0];
@@ -609,7 +930,7 @@ window.apagarConversa = (id) => {
 };
 
 // ===================== SYSTEM PROMPT + SEMANTIC MEMORY =====================
-function montarSystemPrompt(query = null) {
+function montarSystemPrompt(fatosRelevantes = []) {
     let base = `Você é o J.A.R.V.I.S., assistente pessoal criado por Tony Stark. O usuário atual se chama ${currentUser}.
 
 REGRAS DE RESPOSTA (obrigatórias):
@@ -634,22 +955,29 @@ MEMÓRIA AUTOMÁTICA:
 
 Seja conciso como um assistente eficiente.`;
 
-    // Semantic retrieval
-    let fatosRelevantes = fatosMemoria;
-    if (query && fatosMemoria.length && embeddingsReady) {
-        // será calculado de forma síncrona aproximada ou usamos todos se poucos
-        fatosRelevantes = fatosMemoria;
-    }
-    if (fatosRelevantes.length) {
-        base += `\n\nInformações permanentes que você deve sempre lembrar sobre este usuário:\n` +
-            fatosRelevantes.map(f => `- ${f.text}`).join('\n');
+    if (fatosRelevantes && fatosRelevantes.length) {
+        base += `\n\nInformações permanentes que você deve sempre lembrar sobre este usuário (as mais relevantes para o contexto atual):\n` +
+            fatosRelevantes.map(f => `- ${typeof f === 'string' ? f : f.text}`).join('\n');
     }
     return base;
 }
 
 async function recuperarFatosRelevantes(query, topK = 6) {
     if (!fatosMemoria.length) return [];
-    if (!embeddingsReady) return fatosMemoria.slice(0, topK);
+    if (!embeddingsReady) {
+        // fallback simples por palavra-chave
+        const q = (query || '').toLowerCase();
+        if (!q) return fatosMemoria.slice(0, topK);
+        const scored = fatosMemoria.map(f => {
+            const t = f.text.toLowerCase();
+            let score = 0;
+            q.split(/\s+/).forEach(w => { if (w.length > 2 && t.includes(w)) score += 1; });
+            return { text: f.text, score };
+        });
+        scored.sort((a,b) => b.score - a.score);
+        const filtered = scored.filter(s => s.score > 0).slice(0, topK);
+        return filtered.length ? filtered : fatosMemoria.slice(0, topK);
+    }
 
     const qEmb = await getEmbedding(query);
     if (!qEmb) return fatosMemoria.slice(0, topK);
@@ -659,7 +987,9 @@ async function recuperarFatosRelevantes(query, topK = 6) {
         score: cosineSim(qEmb, f.embedding || [])
     }));
     scored.sort((a,b) => b.score - a.score);
-    return scored.filter(s => s.score > 0.25).slice(0, topK);
+    const relevant = scored.filter(s => s.score > 0.22).slice(0, topK);
+    // se quase nada passou o threshold, pega os topK mesmo assim (melhor que zero)
+    return relevant.length ? relevant : scored.slice(0, Math.min(topK, 4));
 }
 
 // ===================== MEMÓRIAS =====================
@@ -683,7 +1013,7 @@ function renderizarListaFatos() {
     fatosMemoria.forEach((f, idx) => {
         lista.innerHTML += `
             <div class="memoria-item">
-                <div class="memoria-texto">${f.text.replace(/</g,'&lt;')}</div>
+                <div class="memoria-texto">${escapeHtml(f.text)}</div>
                 <div style="margin-top:8px;display:flex;justify-content:flex-end;gap:14px;">
                     <button class="btn-del-memoria" style="color:var(--accent);" onclick="editarFato(${idx})">${ICON_EDIT} Editar</button>
                     <button class="btn-del-memoria" onclick="excluirFato(${idx})">${ICON_TRASH} Excluir</button>
@@ -701,11 +1031,7 @@ window.adicionarFato = async () => {
     campo.value = '';
     renderizarListaFatos();
     mostrarToastMemoria(texto);
-    // atualiza system da conversa atual
-    if (conversas[conversaAtualId]) {
-        conversas[conversaAtualId].messages[0] = { role: 'system', content: montarSystemPrompt() };
-        salvarConversas();
-    }
+    await atualizarSystemDaConversaAtual();
 };
 window.editarFato = async (idx) => {
     const atual = fatosMemoria[idx]?.text;
@@ -716,20 +1042,25 @@ window.editarFato = async (idx) => {
     fatosMemoria[idx] = { text: novo.trim(), embedding: emb };
     salvarFatos();
     renderizarListaFatos();
+    await atualizarSystemDaConversaAtual();
 };
-window.excluirFato = (idx) => {
+window.excluirFato = async (idx) => {
     if (!confirm('Excluir esta memória?')) return;
     fatosMemoria.splice(idx, 1);
     salvarFatos();
     renderizarListaFatos();
+    await atualizarSystemDaConversaAtual();
 };
 
 // ===================== CONFIG =====================
 window.abrirConfig = () => {
     document.getElementById('cfg-api-key').value = apiKey;
+    const k2 = document.getElementById('cfg-api-key-2');
+    if (k2) k2.value = apiKey2;
     document.getElementById('cfg-model').value = modeloPadrao;
     document.getElementById('cfg-websearch').value = String(usarWebSearch);
     document.getElementById('cfg-confirm-mem').value = String(confirmarMemoria);
+    document.getElementById('cfg-max-hist').value = String(maxHist);
     document.getElementById('cfg-pitch').value = String(vozPitch);
     document.getElementById('cfg-rate').value = String(vozRate);
     popularVozes();
@@ -743,20 +1074,26 @@ window.fecharConfig = () => {
 };
 window.salvarConfig = () => {
     apiKey = document.getElementById('cfg-api-key').value.trim();
+    apiKey2 = (document.getElementById('cfg-api-key-2')?.value || '').trim();
     modeloPadrao = document.getElementById('cfg-model').value;
     usarWebSearch = document.getElementById('cfg-websearch').value === 'true';
     confirmarMemoria = document.getElementById('cfg-confirm-mem').value === 'true';
+    maxHist = parseInt(document.getElementById('cfg-max-hist').value, 10) || DEFAULT_MAX_HIST;
     vozSelecionada = document.getElementById('cfg-voice').value;
     vozPitch = parseFloat(document.getElementById('cfg-pitch').value);
     vozRate = parseFloat(document.getElementById('cfg-rate').value);
     localStorage.setItem('jarvis_apikey_' + currentUser, apiKey);
+    localStorage.setItem('jarvis_apikey2_' + currentUser, apiKey2);
+    localStorage.setItem('jarvis_apikey_idx_' + currentUser, String(apiKeyIndex));
     localStorage.setItem('jarvis_model_' + currentUser, modeloPadrao);
     localStorage.setItem('jarvis_websearch_' + currentUser, String(usarWebSearch));
     localStorage.setItem('jarvis_confirm_mem_' + currentUser, String(confirmarMemoria));
+    localStorage.setItem('jarvis_max_hist_' + currentUser, String(maxHist));
     localStorage.setItem('jarvis_voice_' + currentUser, vozSelecionada);
     localStorage.setItem('jarvis_pitch_' + currentUser, String(vozPitch));
     localStorage.setItem('jarvis_rate_' + currentUser, String(vozRate));
-    alert('Configurações salvas!');
+    const n = chavesDisponiveis().length;
+    alert(n >= 2 ? 'Configurações salvas! Rotação entre 2 chaves ativa.' : 'Configurações salvas!');
     fecharConfig();
 };
 window.confirmarApagarTudo = () => {
@@ -778,7 +1115,9 @@ window.toggleVoz = () => {
 };
 function atualizarTextoBotaoVoz() {
     const btn = document.getElementById('btn-toggle-voz');
-    if (btn) btn.innerText = vozAtivada ? 'Voz: LIGADA' : 'Voz: DESLIGADA';
+    if (!btn) return;
+    const icon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+    btn.innerHTML = icon + (vozAtivada ? ' Voz: LIGADA' : ' Voz: DESLIGADA');
 }
 
 // ===================== MENU =====================
@@ -790,18 +1129,72 @@ window.fecharMenu = () => {
     document.getElementById('sidebar').style.left = '-300px';
     setTimeout(() => document.getElementById('overlay-menu').style.display = 'none', 250);
 };
-window.confirmarLimpeza = () => {
+window.confirmarLimpeza = async () => {
     if (!confirm('Limpar mensagens desta conversa?')) return;
-    conversas[conversaAtualId].messages = [{ role: 'system', content: montarSystemPrompt() }];
+    conversas[conversaAtualId].messages = [{ role: 'system', content: montarSystemPrompt(fatosMemoria.slice(0, 12)) }];
+    delete arquivosPorConversa[conversaAtualId];
     salvarConversas();
     renderizarChat();
     fecharMenu();
 };
 
 // ===================== CHAT RENDER =====================
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function unescapeHtml(str) {
+    return String(str)
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+}
+
+function parseMarkdown(text) {
+    if (!text) return '';
+    let safe = escapeHtml(text);
+
+    // Blocos de código ```lang\ncode``` — desescapa só o conteúdo do bloco para o Map de cópia
+    safe = safe.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+        const id = 'code_' + (++codeCounter);
+        codeStore.set(id, unescapeHtml(code));
+        return `<div class="code-block"><div class="code-block-header"><span>${escapeHtml(lang || 'código')}</span>
+            <button class="copy-btn" data-code-id="${id}" onclick="copiarCodigoPorId('${id}', this)">${ICON_COPY} Copiar</button></div>
+            <pre><code>${code}</code></pre></div>`;
+    });
+
+    // Inline code (evita processar dentro de tags já geradas de forma grosseira)
+    safe = safe.replace(/`([^`\n]+)`/g, '<code style="background:var(--bg3);padding:1px 5px;border-radius:4px;font-size:0.9em;">$1</code>');
+
+    // Negrito antes de itálico
+    safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    safe = safe.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+
+    safe = safe.replace(/\n/g, '<br>');
+    return safe;
+}
+
+window.copiarCodigoPorId = (id, btn) => {
+    const texto = codeStore.get(id) || '';
+    navigator.clipboard.writeText(texto).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = ICON_CHECK + ' Copiado!';
+        setTimeout(() => { btn.innerHTML = orig; }, 1800);
+    }).catch(() => alert('Não foi possível copiar'));
+};
+
 function renderizarChat() {
     const chat = document.getElementById('chat');
     chat.innerHTML = '';
+    codeStore.clear();
     const msgs = conversas[conversaAtualId]?.messages || [];
     msgs.forEach((msg, idx) => {
         if (msg.role === 'user') adicionarChat('user', msg.content, idx);
@@ -809,26 +1202,7 @@ function renderizarChat() {
     });
     chat.scrollTop = chat.scrollHeight;
 }
-function parseMarkdown(text) {
-    if (!text) return '';
-    text = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-        return `<div class="code-block"><div class="code-block-header"><span>${lang||'código'}</span>
-            <button class="copy-btn" onclick="copiarTexto(this, \`${code.replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`)">${ICON_COPY} Copiar</button></div>
-            <pre><code>${code}</code></pre></div>`;
-    });
-    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    text = text.replace(/\n/g, '<br>');
-    return text;
-}
-window.copiarTexto = (btn, texto) => {
-    navigator.clipboard.writeText(texto).then(() => {
-        const orig = btn.innerHTML;
-        btn.innerHTML = ICON_CHECK + ' Copiado!';
-        setTimeout(() => btn.innerHTML = orig, 1800);
-    });
-};
+
 function adicionarChat(remetente, texto, idx) {
     const chat = document.getElementById('chat');
     if (remetente === 'jarvis') {
@@ -844,7 +1218,7 @@ function adicionarChat(remetente, texto, idx) {
         const display = typeof texto === 'string' ? texto : (texto + '');
         chat.innerHTML += `
             <div class="msg-user-wrapper" data-idx="${idx}">
-                <div class="msg-user">${display.replace(/</g,'&lt;')}</div>
+                <div class="msg-user">${escapeHtml(display)}</div>
                 <div class="msg-actions">
                     <button class="action-btn" onclick="editarMensagem(${idx})">${ICON_EDIT} Editar</button>
                 </div>
@@ -852,16 +1226,17 @@ function adicionarChat(remetente, texto, idx) {
     }
     chat.scrollTop = chat.scrollHeight;
 }
+
 window.copiarMensagem = (idx) => {
     const msg = conversas[conversaAtualId].messages[idx];
     if (msg) navigator.clipboard.writeText(msg.content);
 };
 window.editarMensagem = (idx) => {
+    if (gerando) return;
     const msg = conversas[conversaAtualId].messages[idx];
     if (!msg || msg.role !== 'user') return;
     const novo = prompt('Editar mensagem:', typeof msg.content === 'string' ? msg.content : '');
     if (novo === null) return;
-    // remove a partir desta mensagem (inclusive respostas posteriores)
     conversas[conversaAtualId].messages = conversas[conversaAtualId].messages.slice(0, idx);
     conversas[conversaAtualId].messages.push({ role: 'user', content: novo.trim() });
     salvarConversas();
@@ -869,6 +1244,7 @@ window.editarMensagem = (idx) => {
     enviarParaAPI();
 };
 window.regenerarResposta = (idx) => {
+    if (gerando) return;
     const msg = conversas[conversaAtualId].messages[idx];
     if (!msg || msg.role !== 'assistant') return;
     conversas[conversaAtualId].messages.splice(idx, 1);
@@ -878,14 +1254,356 @@ window.regenerarResposta = (idx) => {
 };
 
 // ===================== ARQUIVOS =====================
-window.previewArquivo = () => {
+function getExt(name) {
+    const i = name.lastIndexOf('.');
+    return i >= 0 ? name.slice(i + 1).toLowerCase() : '';
+}
+
+function isTextExt(ext) {
+    return TEXT_EXTENSIONS.has(ext);
+}
+
+function truncarTexto(txt) {
+    if (!txt) return { text: '', truncado: false };
+    if (txt.length <= MAX_FILE_CHARS) return { text: txt, truncado: false };
+    return { text: txt.slice(0, MAX_FILE_CHARS), truncado: true };
+}
+
+function mostrarPreviewArquivo(label, extra = '') {
+    const el = document.getElementById('preview-container');
+    el.style.display = 'block';
+    el.innerHTML = ICON_FILE + ' ' + escapeHtml(label) +
+        (extra ? ' <span style="color:var(--danger)">' + extra + '</span>' : '');
+}
+
+/** Divide texto em chunks com overlap para RAG */
+function chunkarTexto(texto) {
+    if (!texto) return [];
+    const chunks = [];
+    let i = 0;
+    while (i < texto.length) {
+        let end = Math.min(i + CHUNK_SIZE, texto.length);
+        // tenta quebrar em fim de linha/parágrafo
+        if (end < texto.length) {
+            const slice = texto.slice(i, end);
+            const breakAt = Math.max(slice.lastIndexOf('\n\n'), slice.lastIndexOf('\n'), slice.lastIndexOf('. '));
+            if (breakAt > CHUNK_SIZE * 0.4) end = i + breakAt + 1;
+        }
+        const piece = texto.slice(i, end).trim();
+        if (piece) chunks.push(piece);
+        if (end >= texto.length) break;
+        i = Math.max(i + 1, end - CHUNK_OVERLAP);
+    }
+    return chunks;
+}
+
+async function prepararArquivoParaRAG(fullText, nome, tipo) {
+    arquivoProcessando = true;
+    try {
+        const { text, truncado } = truncarTexto(fullText || '');
+        const modo = text.length <= FULL_FILE_THRESHOLD ? 'full' : 'rag';
+        let chunks = [];
+        if (modo === 'rag') {
+            const parts = chunkarTexto(text);
+            const batch = parts.slice(0, 40);
+            // Embeddings em série leve para não travar a UI em arquivos grandes
+            for (const t of batch) {
+                chunks.push({
+                    text: t,
+                    embedding: embeddingsReady ? await getEmbedding(t) : null
+                });
+            }
+        }
+        arquivoPendente = {
+            nome,
+            tipo: tipo || 'text/plain',
+            fullText: text,
+            chunks,
+            modo,
+            truncado,
+            chars: text.length
+        };
+        arquivoBase64 = text;
+        arquivoNome = nome;
+        arquivoTipo = tipo || 'text/plain';
+        arquivoTruncado = truncado;
+
+        const modoLabel = modo === 'full'
+            ? `${text.length} chars`
+            : `RAG · ${chunks.length} trechos · ${text.length} chars`;
+        mostrarPreviewArquivo(nome, (truncado ? 'truncado · ' : '') + modoLabel);
+    } finally {
+        arquivoProcessando = false;
+    }
+}
+
+function setArquivoTexto(content, nome) {
+    // async wrapper — chamada síncrona antiga vira fire-and-forget com preview imediato
+    mostrarPreviewArquivo(nome, 'indexando…');
+    prepararArquivoParaRAG(content, nome, 'text/plain').catch(err => {
+        console.error(err);
+        const { text, truncado } = truncarTexto(content);
+        arquivoBase64 = text;
+        arquivoNome = nome;
+        arquivoTipo = 'text/plain';
+        arquivoTruncado = truncado;
+        arquivoPendente = { nome, tipo: 'text/plain', fullText: text, chunks: [], modo: 'full', truncado, chars: text.length };
+        mostrarPreviewArquivo(nome, truncado ? '(truncado)' : '');
+    });
+}
+
+/** Recupera trechos do arquivo mais relevantes para a pergunta do usuário */
+async function recuperarChunksArquivo(arquivo, query, topK = FILE_TOP_CHUNKS) {
+    if (!arquivo) return [];
+    if (arquivo.modo === 'full' || !arquivo.chunks?.length) {
+        return arquivo.fullText ? [arquivo.fullText] : [];
+    }
+    if (!embeddingsReady || !query) {
+        // sem embeddings: primeiros chunks + um do meio
+        const c = arquivo.chunks;
+        const pick = [c[0], c[Math.floor(c.length / 2)], c[c.length - 1]].filter(Boolean);
+        return [...new Set(pick.map(x => x.text))].slice(0, topK);
+    }
+    const qEmb = await getEmbedding(query);
+    if (!qEmb) return arquivo.chunks.slice(0, topK).map(c => c.text);
+
+    const scored = arquivo.chunks.map(c => ({
+        text: c.text,
+        score: cosineSim(qEmb, c.embedding || [])
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored.filter(s => s.score > 0.15).slice(0, topK).map(s => s.text);
+}
+
+function resumoCurtoArquivo(arq) {
+    if (!arq) return '';
+    const tipo = arq.tipo === 'application/pdf' ? 'PDF'
+        : arq.tipo === 'application/zip' ? 'ZIP'
+        : (arq.nome || '').toLowerCase().includes('docx') ? 'DOCX' : 'arquivo';
+    return `[Arquivo anexado: ${arq.nome} · ${tipo} · ~${arq.chars || arq.fullText?.length || 0} chars${arq.modo === 'rag' ? ' · indexado em trechos' : ''}]`;
+}
+
+/** Extrai texto de PDF via pdf.js (CDN) */
+async function extrairTextoPDF(file) {
+    const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const maxPages = Math.min(pdf.numPages, MAX_PDF_PAGES);
+    const partes = [];
+
+    for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items
+            .map(item => ('str' in item ? item.str : ''))
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (pageText) partes.push(`--- Página ${i} ---\n${pageText}`);
+    }
+
+    let full = partes.join('\n\n');
+    if (pdf.numPages > MAX_PDF_PAGES) {
+        full += `\n\n[Nota: PDF tem ${pdf.numPages} páginas; extraídas apenas as primeiras ${MAX_PDF_PAGES}]`;
+    }
+    return full;
+}
+
+/** Extrai textos de dentro de um ZIP via JSZip */
+async function extrairTextoZIP(file) {
+    const JSZip = (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm')).default;
+    const zip = await JSZip.loadAsync(file);
+    const entradas = [];
+    const nomes = Object.keys(zip.files)
+        .filter(n => !zip.files[n].dir && !n.startsWith('__MACOSX') && !n.includes('/.'))
+        .sort();
+
+    let totalChars = 0;
+    let processados = 0;
+    let ignorados = 0;
+    let parouPorLimite = false;
+
+    for (const nome of nomes) {
+        if (processados >= MAX_ZIP_FILES || totalChars >= MAX_FILE_CHARS) {
+            parouPorLimite = true;
+            break;
+        }
+        const ext = getExt(nome);
+        if (!isTextExt(ext) && ext !== 'docx') {
+            ignorados++;
+            continue;
+        }
+        try {
+            let texto = '';
+            if (ext === 'docx') {
+                texto = await extrairTextoDocxFromZipEntry(zip, nome);
+            } else {
+                texto = await zip.files[nome].async('string');
+            }
+            if (!texto || !texto.trim()) {
+                ignorados++;
+                continue;
+            }
+            const restante = MAX_FILE_CHARS - totalChars;
+            if (texto.length > restante) {
+                texto = texto.slice(0, restante);
+            }
+            entradas.push(`### Arquivo: ${nome}\n${texto}`);
+            totalChars += texto.length + nome.length + 20;
+            processados++;
+        } catch {
+            ignorados++;
+        }
+    }
+
+    let resultado = entradas.join('\n\n');
+    if (!resultado) {
+        resultado = '[ZIP sem arquivos de texto legíveis encontrados]';
+    }
+    const notas = [];
+    if (processados > 0) notas.push(`${processados} arquivo(s) de texto extraído(s)`);
+    if (ignorados > 0) notas.push(`${ignorados} ignorado(s)`);
+    if (parouPorLimite) notas.push('limite de arquivos/tamanho');
+    if (totalChars >= MAX_FILE_CHARS) notas.push('conteúdo truncado');
+    return { text: resultado, nota: notas.join(' · ') };
+}
+
+/** Extrai texto de um entry DOCX dentro de um JSZip (word/document.xml) */
+async function extrairTextoDocxFromZipEntry(zip, entryName) {
+    // Se o entry for o próprio .docx, precisamos abrir como sub-zip
+    const data = await zip.files[entryName].async('arraybuffer');
+    const JSZip = (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm')).default;
+    const inner = await JSZip.loadAsync(data);
+    return extrairTextoDeDocxZip(inner);
+}
+
+async function extrairTextoDeDocxZip(zip) {
+    const docXml = zip.file('word/document.xml');
+    if (!docXml) return '';
+    const xml = await docXml.async('string');
+    // Remove tags, preserva quebras aproximadas de parágrafo
+    return xml
+        .replace(/<w:p[^>]*>/g, '\n')
+        .replace(/<w:tab[^/]*\/>/g, '\t')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
+/** Extrai texto de arquivo .docx (é um ZIP) */
+async function extrairTextoDOCX(file) {
+    const JSZip = (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm')).default;
+    const zip = await JSZip.loadAsync(file);
+    return extrairTextoDeDocxZip(zip);
+}
+
+/** Detecta se o conteúdo parece binário (muitos caracteres de controle) */
+function pareceBinario(str) {
+    if (!str || str.length < 50) return false;
+    let control = 0;
+    const sample = str.slice(0, 2000);
+    for (let i = 0; i < sample.length; i++) {
+        const c = sample.charCodeAt(i);
+        if (c < 9 || (c > 13 && c < 32) || c === 127) control++;
+    }
+    return control / sample.length > 0.15;
+}
+
+window.previewArquivo = async () => {
     const input = document.getElementById('arquivo');
     if (!input.files?.[0]) return;
     const file = input.files[0];
     arquivoNome = file.name;
-    arquivoTipo = file.type;
+    arquivoTipo = file.type || '';
+    arquivoTruncado = false;
+    arquivoBase64 = null;
+    arquivoPendente = null;
+    arquivoProcessando = true;
 
-    if (file.type.startsWith('image/')) {
+    const preview = document.getElementById('preview-container');
+    preview.style.display = 'block';
+    preview.innerHTML = ICON_FILE + ' Processando ' + escapeHtml(file.name) + '…';
+
+    const ext = getExt(file.name);
+    const isImage = (file.type && file.type.startsWith('image/')) ||
+        ['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext);
+
+    try {
+        if (isImage) {
+            await processarImagem(file);
+            arquivoProcessando = false;
+            return;
+        }
+
+        if (ext === 'pdf' || file.type === 'application/pdf') {
+            const texto = await extrairTextoPDF(file);
+            await prepararArquivoParaRAG(texto, file.name + ' (PDF)', 'application/pdf');
+            return;
+        }
+
+        if (ext === 'zip' || file.type === 'application/zip' || file.type === 'application/x-zip-compressed') {
+            const { text, nota } = await extrairTextoZIP(file);
+            await prepararArquivoParaRAG(text, file.name + ' (ZIP)', 'application/zip');
+            // nota extra no preview
+            if (nota && arquivoPendente) {
+                const el = document.getElementById('preview-container');
+                if (el) el.innerHTML += ' · ' + escapeHtml(nota);
+            }
+            return;
+        }
+
+        if (ext === 'docx' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            const texto = await extrairTextoDOCX(file);
+            if (!texto.trim()) {
+                mostrarPreviewArquivo(file.name, '(sem texto extraível)');
+                arquivoBase64 = null;
+                arquivoPendente = null;
+                arquivoProcessando = false;
+                return;
+            }
+            await prepararArquivoParaRAG(texto, file.name + ' (DOCX)', 'application/docx');
+            return;
+        }
+
+        // Texto genérico (txt, md, csv, json, código, etc.)
+        const reader = new FileReader();
+        reader.onload = async e => {
+            let content = e.target.result || '';
+            if (pareceBinario(content)) {
+                arquivoBase64 = null;
+                arquivoPendente = null;
+                arquivoProcessando = false;
+                mostrarPreviewArquivo(file.name, '(arquivo binário — não suportado como texto)');
+                return;
+            }
+            await prepararArquivoParaRAG(content, file.name, 'text/plain');
+        };
+        reader.onerror = () => {
+            mostrarPreviewArquivo(file.name, '(erro ao ler)');
+            arquivoProcessando = false;
+            arquivoPendente = null;
+            arquivoBase64 = null;
+        };
+        reader.readAsText(file, 'UTF-8');
+    } catch (err) {
+        console.error('Erro ao processar arquivo:', err);
+        mostrarPreviewArquivo(file.name, '(erro: ' + (err.message || 'falha') + ')');
+        arquivoBase64 = null;
+        arquivoPendente = null;
+        arquivoProcessando = false;
+    }
+};
+
+function processarImagem(file) {
+    return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = e => {
             const img = new Image();
@@ -893,28 +1611,26 @@ window.previewArquivo = () => {
                 const canvas = document.createElement('canvas');
                 let w = img.width, h = img.height;
                 const max = 800;
-                if (w > h && w > max) { h *= max/w; w = max; }
-                else if (h > max) { w *= max/h; h = max; }
-                canvas.width = w; canvas.height = h;
+                if (w > h && w > max) { h *= max / w; w = max; }
+                else if (h > max) { w *= max / h; h = max; }
+                canvas.width = w;
+                canvas.height = h;
                 canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                 arquivoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                arquivoTipo = 'image/jpeg';
+                arquivoTruncado = false;
+                arquivoPendente = null; // imagem não usa RAG de texto
                 document.getElementById('preview-container').style.display = 'block';
                 document.getElementById('preview-container').innerHTML = ICON_IMG + ' Imagem pronta';
+                resolve();
             };
+            img.onerror = reject;
             img.src = e.target.result;
         };
+        reader.onerror = reject;
         reader.readAsDataURL(file);
-    } else {
-        // texto
-        const reader = new FileReader();
-        reader.onload = e => {
-            arquivoBase64 = e.target.result; // text content
-            document.getElementById('preview-container').style.display = 'block';
-            document.getElementById('preview-container').innerHTML = ICON_FILE + ' ' + file.name;
-        };
-        reader.readAsText(file);
-    }
-};
+    });
+}
 
 // ===================== VOZ =====================
 let recognition = null;
@@ -942,8 +1658,6 @@ function popularVozes() {
     const preencher = () => {
         const voices = speechSynthesis.getVoices();
         sel.innerHTML = '';
-        // Ordena: prioriza inglês britânico masculino, depois outras
-        const preferidas = ['en-GB', 'en-US', 'pt-BR', 'pt-PT'];
         const sorted = [...voices].sort((a, b) => {
             const score = (v) => {
                 let s = 0;
@@ -963,7 +1677,6 @@ function popularVozes() {
             sel.appendChild(opt);
         });
         if (!vozSelecionada && sorted.length) {
-            // auto-escolhe a melhor
             const best = sorted[0];
             vozSelecionada = best.name;
             sel.value = best.name;
@@ -980,12 +1693,33 @@ window.testarVoz = () => {
     falarJarvis(texto, true);
 };
 
+function limparTextoParaFala(texto) {
+    if (!texto) return '';
+    return texto
+        // remove blocos de código
+        .replace(/```[\s\S]*?```/g, ' ')
+        // remove inline code
+        .replace(/`[^`]+`/g, ' ')
+        // remove links markdown
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        // remove formatação
+        .replace(/[*#_~\[\]{}|\\]/g, '')
+        // remove a tag de memória se sobrar
+        .replace(/\[\[LEMBRAR:\s*.+?\]\]/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 function falarJarvis(texto, forcar = false) {
     if ((!vozAtivada && !forcar) || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(texto.replace(/[*#`_~\[\]]/g, ''));
+    const limpo = limparTextoParaFala(texto);
+    if (!limpo) return;
+    const u = new SpeechSynthesisUtterance(limpo);
     const voices = speechSynthesis.getVoices();
-    const chosen = voices.find(v => v.name === vozSelecionada) || voices.find(v => /en-GB/i.test(v.lang) && /male|daniel|george/i.test(v.name)) || voices[0];
+    const chosen = voices.find(v => v.name === vozSelecionada)
+        || voices.find(v => /en-GB/i.test(v.lang) && /male|daniel|george/i.test(v.name))
+        || voices[0];
     if (chosen) u.voice = chosen;
     u.lang = chosen?.lang || 'en-GB';
     u.pitch = vozPitch;
@@ -1007,41 +1741,134 @@ window.autoResize = (el) => {
 
 window.enviarMensagem = async () => {
     if (gerando) return;
+    if (arquivoProcessando) {
+        alert('Aguarde o arquivo terminar de ser processado.');
+        return;
+    }
     const campo = document.getElementById('campoTexto');
     let texto = campo.value.trim();
-    if (!texto && !arquivoBase64) return;
+    const temImagem = arquivoBase64 && arquivoTipo?.startsWith('image/');
+    const temArquivoTexto = !!(arquivoPendente && arquivoPendente.fullText);
+    if (!texto && !temImagem && !temArquivoTexto) return;
 
-    // atualiza título da conversa se for a primeira mensagem real
     const msgs = conversas[conversaAtualId].messages;
     if (msgs.length <= 1) {
         conversas[conversaAtualId].title = (texto || arquivoNome || 'Nova conversa').slice(0, 40);
         renderChatList();
     }
 
-    let contentToPush = texto || `[Arquivo: ${arquivoNome}]`;
-    if (arquivoBase64 && arquivoTipo?.startsWith('image/')) {
+    // ---- Histórico: só referência curta (economiza tokens nas próximas mensagens) ----
+    let contentToPush = texto || '';
+    if (temImagem) {
         contentToPush = texto || 'Descreva a imagem.';
-    } else if (arquivoBase64 && !arquivoTipo?.startsWith('image/')) {
-        contentToPush = (texto ? texto + '\n\n' : '') + `Conteúdo do arquivo ${arquivoNome}:\n\`\`\`\n${arquivoBase64.slice(0, 12000)}\n\`\`\``;
+    } else if (temArquivoTexto) {
+        const ref = resumoCurtoArquivo(arquivoPendente);
+        contentToPush = texto
+            ? `${texto}\n\n${ref}`
+            : `${ref}\nAnalise o conteúdo deste arquivo.`;
+        // Guarda o arquivo na conversa para perguntas futuras (máx. 3)
+        if (!arquivosPorConversa[conversaAtualId]) arquivosPorConversa[conversaAtualId] = [];
+        arquivosPorConversa[conversaAtualId].push(arquivoPendente);
+        if (arquivosPorConversa[conversaAtualId].length > 3) {
+            arquivosPorConversa[conversaAtualId] = arquivosPorConversa[conversaAtualId].slice(-3);
+        }
     }
 
     msgs.push({ role: 'user', content: contentToPush });
     adicionarChat('user', contentToPush, msgs.length - 1);
     campo.value = '';
     campo.style.height = 'auto';
-    const tinhaImagem = arquivoBase64 && arquivoTipo?.startsWith('image/');
-    const imgData = arquivoBase64;
-    arquivoBase64 = null; arquivoNome = null; arquivoTipo = null;
+
+    const imgData = temImagem ? arquivoBase64 : null;
+    // arquivoPendente será consumido em prepararMensagensParaAPI e depois limpo
+    const pendenteSnapshot = arquivoPendente;
+    arquivoBase64 = null;
+    arquivoNome = null;
+    arquivoTipo = null;
+    arquivoTruncado = false;
+    arquivoPendente = null;
     document.getElementById('arquivo').value = '';
     document.getElementById('preview-container').style.display = 'none';
     document.getElementById('suggestions').style.display = 'none';
 
     salvarConversas();
-    await enviarParaAPI(tinhaImagem ? imgData : null);
+    await enviarParaAPI(imgData, pendenteSnapshot);
 };
 
-async function enviarParaAPI(imageBase64 = null) {
-    if (!apiKey) {
+/**
+ * Monta mensagens para a API:
+ * - system com memórias relevantes
+ * - histórico limitado (sem texto completo de arquivos)
+ * - injeta só trechos relevantes do arquivo (RAG) ou o arquivo inteiro se for pequeno
+ */
+async function prepararMensagensParaAPI(imageBase64 = null, arquivoAtual = null) {
+    const msgs = conversas[conversaAtualId].messages;
+    const lastUser = [...msgs].reverse().find(m => m.role === 'user');
+    const query = typeof lastUser?.content === 'string' ? lastUser.content : '';
+
+    const relevantes = await recuperarFatosRelevantes(query, 8);
+    let systemContent = montarSystemPrompt(relevantes);
+
+    // Injeta contexto do arquivo (atual ou já anexados na conversa) de forma econômica
+    const arquivos = [];
+    if (arquivoAtual) arquivos.push(arquivoAtual);
+    const antigos = arquivosPorConversa[conversaAtualId] || [];
+    // evita duplicar o que acabou de anexar
+    antigos.forEach(a => {
+        if (!arquivoAtual || a.nome !== arquivoAtual.nome || a.fullText !== arquivoAtual.fullText) {
+            arquivos.push(a);
+        }
+    });
+
+    // System limpo (só memórias) — NÃO grava trechos de arquivo no histórico
+    const systemBase = systemContent;
+    msgs[0] = { role: 'system', content: systemBase };
+
+    if (arquivos.length) {
+        const blocos = [];
+        for (const arq of arquivos.slice(-2)) {
+            const trechos = await recuperarChunksArquivo(arq, query, FILE_TOP_CHUNKS);
+            if (!trechos.length) continue;
+            if (arq.modo === 'full') {
+                blocos.push(`Arquivo "${arq.nome}" (completo):\n${trechos[0]}`);
+            } else {
+                blocos.push(
+                    `Trechos mais relevantes do arquivo "${arq.nome}" (${arq.chars} chars no total; mostrando os mais relacionados à pergunta):\n` +
+                    trechos.map((t, i) => `[Trecho ${i + 1}]\n${t}`).join('\n\n')
+                );
+            }
+        }
+        if (blocos.length) {
+            systemContent += '\n\n--- CONTEXTO DE ARQUIVOS ANEXADOS ---\n' + blocos.join('\n\n');
+        }
+    }
+
+    const nonSystem = msgs.slice(1);
+    const limited = nonSystem.length > maxHist ? nonSystem.slice(-maxHist) : nonSystem;
+
+    // Só a chamada da API recebe o contexto de arquivos (economia no localStorage/histórico)
+    const apiMessages = [
+        { role: 'system', content: systemContent },
+        ...limited.map(m => {
+            if (m.role === 'user' && imageBase64 && m === lastUser) {
+                return {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: typeof m.content === 'string' ? m.content : 'Analise a imagem.' },
+                        { type: 'image_url', image_url: { url: imageBase64 } }
+                    ]
+                };
+            }
+            // Garante que mensagens antigas não carreguem system poluído
+            if (m.role === 'system') return null;
+            return { role: m.role, content: m.content };
+        }).filter(Boolean)
+    ];
+    return apiMessages;
+}
+
+async function enviarParaAPI(imageBase64 = null, arquivoAtual = null) {
+    if (!chavesDisponiveis().length) {
         alert('Configure sua chave da API Groq em Configuracoes (menu).');
         return;
     }
@@ -1051,31 +1878,12 @@ async function enviarParaAPI(imageBase64 = null) {
     document.getElementById('typing').style.display = 'block';
 
     const msgs = conversas[conversaAtualId].messages;
-    // atualiza system com fatos relevantes
-    const lastUser = [...msgs].reverse().find(m => m.role === 'user');
-    const relevantes = await recuperarFatosRelevantes(lastUser?.content || '', 8);
-    const systemContent = montarSystemPrompt() + (relevantes.length ? '\n\nFatos mais relevantes para esta pergunta:\n' + relevantes.map(r => `- ${r.text}`).join('\n') : '');
-    msgs[0] = { role: 'system', content: systemContent };
+    const apiMessages = await prepararMensagensParaAPI(imageBase64, arquivoAtual);
 
-    // prepara mensagens para a API
-    let apiMessages = msgs.map(m => {
-        if (m.role === 'user' && imageBase64 && m === lastUser) {
-            return {
-                role: 'user',
-                content: [
-                    { type: 'text', text: typeof m.content === 'string' ? m.content : 'Analise a imagem.' },
-                    { type: 'image_url', image_url: { url: imageBase64 } }
-                ]
-            };
-        }
-        return { role: m.role, content: m.content };
-    });
-
-    // modelo
     let model = modeloPadrao;
     if (imageBase64) model = 'qwen/qwen3.6-27b';
 
-    // tools
+    // tools: browser_search só em modelos gpt-oss (server-side)
     const tools = [];
     if (usarWebSearch && (model.includes('gpt-oss') || model.includes('compound'))) {
         tools.push({ type: 'browser_search' });
@@ -1091,25 +1899,47 @@ async function enviarParaAPI(imageBase64 = null) {
         const body = {
             model,
             messages: apiMessages,
-            max_tokens: 1024,
+            max_tokens: 2048,
             stream: true,
             temperature: 0.7
         };
         if (tools.length) body.tools = tools;
 
-        const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + apiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body),
-            signal: abortController.signal
-        });
+        // Tenta até 2 chaves (principal + reserva) em caso de rate limit
+        const maxTentativas = Math.min(2, chavesDisponiveis().length);
+        let resp = null;
+        let lastErrMsg = '';
 
-        if (!resp.ok) {
-            const err = await resp.json().catch(() => ({}));
-            throw new Error(err.error?.message || `Erro HTTP ${resp.status}`);
+        for (let tentativa = 0; tentativa < maxTentativas; tentativa++) {
+            const key = chaveAtual();
+            resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + key,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body),
+                signal: abortController.signal
+            });
+
+            if (resp.ok) break;
+
+            const errBody = await resp.json().catch(() => ({}));
+            lastErrMsg = errBody.error?.message || `Erro HTTP ${resp.status}`;
+
+            if (isRateLimitError(resp.status, lastErrMsg) && tentativa < maxTentativas - 1) {
+                const trocou = rotacionarChave(lastErrMsg.slice(0, 80));
+                if (trocou) {
+                    const el = document.getElementById(tempId);
+                    if (el) el.innerHTML = '<em style="opacity:.7">Limite atingido — alternando chave…</em>';
+                    continue;
+                }
+            }
+            throw new Error(lastErrMsg);
+        }
+
+        if (!resp || !resp.ok) {
+            throw new Error(lastErrMsg || 'Falha na API');
         }
 
         const reader = resp.body.getReader();
@@ -1124,18 +1954,23 @@ async function enviarParaAPI(imageBase64 = null) {
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
             for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const data = line.slice(6).trim();
-                    if (data === '[DONE]') continue;
-                    try {
-                        const parsed = JSON.parse(data);
-                        const delta = parsed.choices?.[0]?.delta?.content || '';
-                        if (delta) {
-                            fullText += delta;
-                            document.getElementById(tempId).innerHTML = parseMarkdown(fullText);
+                if (!line.startsWith('data: ')) continue;
+                const data = line.slice(6).trim();
+                if (data === '[DONE]') continue;
+                try {
+                    const parsed = JSON.parse(data);
+                    const choice = parsed.choices?.[0];
+                    const delta = choice?.delta?.content || '';
+                    if (delta) {
+                        fullText += delta;
+                        const el = document.getElementById(tempId);
+                        if (el) {
+                            el.innerHTML = parseMarkdown(fullText);
                             chat.scrollTop = chat.scrollHeight;
                         }
-                    } catch {}
+                    }
+                } catch {
+                    // ignora chunks malformados
                 }
             }
         }
@@ -1143,21 +1978,18 @@ async function enviarParaAPI(imageBase64 = null) {
         // finaliza
         document.getElementById(`wrap-${tempId}`)?.remove();
         if (fullText) {
-            // Remove raciocínio interno se o modelo vazar
             let textoLimpo = fullText
                 .replace(/<think>[\s\S]*?<\/think>/gi, '')
                 .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
                 .replace(/\[thinking\][\s\S]*?\[\/thinking\]/gi, '')
                 .replace(/\[reasoning\][\s\S]*?\[\/reasoning\]/gi, '')
-                .replace(/^[\s\S]*?(?=\n\n|$)/, (m) => {
-                    // se começar com frases de raciocínio comuns, tenta limpar blocos iniciais longos
-                    if (/^(let me think|thinking|raciocínio|analisando|passo a passo|okay,|hmm)/i.test(m.trim()) && m.length > 200) return '';
-                    return m;
-                });
+                .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+                .trim();
 
-            // Extrai e processa memória automática
+            // Extrai memória automática
             const memoriaMatch = textoLimpo.match(/\[\[LEMBRAR:\s*(.+?)\]\]/i);
             textoLimpo = textoLimpo.replace(/\[\[LEMBRAR:\s*.+?\]\]/gi, '').trim();
+
             if (memoriaMatch) {
                 const fato = memoriaMatch[1].trim();
                 if (fato) {
@@ -1172,17 +2004,19 @@ async function enviarParaAPI(imageBase64 = null) {
                             }
                             salvarFatos();
                             mostrarToastMemoria(fato);
+                            await atualizarSystemDaConversaAtual();
                         };
                         if (confirmarMemoria) {
                             if (confirm('Salvar na memória?\n\n"' + fato + '"')) {
-                                salvar();
+                                await salvar();
                             }
                         } else {
-                            salvar();
+                            await salvar();
                         }
                     }
                 }
             }
+
             msgs.push({ role: 'assistant', content: textoLimpo });
             adicionarChat('jarvis', textoLimpo, msgs.length - 1);
             salvarConversas();
@@ -1192,11 +2026,12 @@ async function enviarParaAPI(imageBase64 = null) {
         }
     } catch (err) {
         if (err.name === 'AbortError') {
-            document.getElementById(tempId).innerText = '(geração interrompida)';
+            const el = document.getElementById(tempId);
+            if (el) el.innerText = '(geração interrompida)';
         } else {
             console.error(err);
             const el = document.getElementById(tempId);
-            if (el) el.innerHTML = `Erro: ${err.message}<br><button class="action-btn" onclick="enviarParaAPI()">Tentar novamente</button>`;
+            if (el) el.innerHTML = `Erro: ${escapeHtml(err.message)}<br><button class="action-btn" onclick="enviarParaAPI()">Tentar novamente</button>`;
         }
     } finally {
         gerando = false;
