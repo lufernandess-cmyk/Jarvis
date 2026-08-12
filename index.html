@@ -234,7 +234,7 @@
         <button class="btn-login" onclick="login()">ACESSAR</button>
         <button class="btn-register" onclick="registrar()">CADASTRAR USUÁRIO</button>
         <p id="auth-msg"></p>
-        <button class="btn-dev" onclick="modoDesenvolvedor()">[ DEV ] Modo Desenvolvedor</button>
+        <button class="btn-dev" onclick="modoDesenvolvedor()">Modo Desenvolvedor</button>
     </div>
 
     <!-- SIDEBAR -->
@@ -307,7 +307,30 @@
                     <option value="true">Sim (pedir confirmação)</option>
                 </select>
             </div>
+            <div class="config-row">
+                <label>Voz do J.A.R.V.I.S.</label>
+                <select id="cfg-voice"></select>
+            </div>
+            <div class="config-row">
+                <label>Tom da voz (pitch)</label>
+                <select id="cfg-pitch">
+                    <option value="0.7">Mais grave</option>
+                    <option value="0.75" selected>Grave (JARVIS)</option>
+                    <option value="0.85">Medio-grave</option>
+                    <option value="1.0">Normal</option>
+                </select>
+            </div>
+            <div class="config-row">
+                <label>Velocidade da voz</label>
+                <select id="cfg-rate">
+                    <option value="0.95">Calma</option>
+                    <option value="1.05" selected>JARVIS (recomendada)</option>
+                    <option value="1.15">Normal</option>
+                    <option value="1.3">Rapida</option>
+                </select>
+            </div>
             <button class="btn-primary" onclick="salvarConfig()">Salvar Configurações</button>
+            <button class="btn-primary" style="background:var(--bg3);color:var(--accent);border:1px solid var(--accent);margin-top:8px;" onclick="testarVoz()">Testar Voz</button>
             <button class="menu-btn-item menu-btn-danger" style="margin-top:20px;justify-content:center;border:1px solid var(--danger);border-radius:8px;" onclick="confirmarApagarTudo()">Apagar Todos os Dados</button>
         </div>
     </div>
@@ -315,18 +338,18 @@
     <!-- APP -->
     <div id="app-container">
         <div class="header">
-            <button class="btn-hamburguer" onclick="abrirMenu()">☰</button>
+            <button class="btn-hamburguer" onclick="abrirMenu()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
             <span class="header-title" id="header-title">J.A.R.V.I.S.</span>
-            <button class="header-btn" onclick="novaConversa()" title="Nova conversa">+</button>
+            <button class="header-btn" onclick="novaConversa()" title="Nova conversa"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
         </div>
         <div class="chat-area" id="chat"></div>
         <div class="typing-indicator" id="typing">J.A.R.V.I.S. está pensando<span>.</span><span>.</span><span>.</span></div>
         <div id="toast-memoria"></div>
-        <div id="preview-container">[arquivo] pronto para envio</div>
+        <div id="preview-container">Arquivo pronto para envio</div>
         <div class="suggestions" id="suggestions"></div>
         <div class="input-wrapper">
             <div class="pill-container">
-                <label for="arquivo" class="icon-btn-pill" style="font-size:26px;font-weight:300;">+</label>
+                <label for="arquivo" class="icon-btn-pill"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></label>
                 <input type="file" id="arquivo" accept="image/*,.txt,.md,.csv,.json,.pdf" style="display:none;" onchange="previewArquivo()">
                 <textarea id="campoTexto" placeholder="Mensagem..." rows="1" oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
                 <button id="btn-mic" class="icon-btn-pill" onclick="toggleMic()">
@@ -335,7 +358,7 @@
                 <button class="btn-send-pill" id="btn-send" onclick="enviarMensagem()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
                 </button>
-                <button class="btn-stop-pill" id="btn-stop" onclick="pararGeracao()">■</button>
+                <button class="btn-stop-pill" id="btn-stop" onclick="pararGeracao()"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
             </div>
         </div>
     </div>
@@ -388,6 +411,9 @@ let conversas = {};          // { id: { title, messages, created } }
 let conversaAtualId = null;
 let fatosMemoria = [];       // [{ text, embedding }]
 let vozAtivada = true;
+let vozSelecionada = '';
+let vozPitch = 0.75;
+let vozRate = 1.05;
 let apiKey = '';
 let modeloPadrao = 'openai/gpt-oss-120b';
 let usarWebSearch = true;
@@ -398,12 +424,17 @@ let arquivoTipo = null;
 let abortController = null;
 let gerando = false;
 
-// ===================== ICONS =====================
-const ICON_COPY = '[copiar]';
-const ICON_CHECK = '[ok]';
-const ICON_REGEN = '[regen]';
-const ICON_EDIT = '[editar]';
-const ICON_TRASH = '[excluir]';
+// ===================== ICONS (SVG monocromaticos) =====================
+const ICON_COPY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+const ICON_CHECK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+const ICON_REGEN = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
+const ICON_EDIT = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+const ICON_TRASH = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+const ICON_PLUS = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const ICON_MENU = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
+const ICON_IMG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;
+const ICON_FILE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+const ICON_STOP = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`;
 
 // ===================== INIT =====================
 window.onload = async () => {
@@ -475,7 +506,11 @@ function carregarTudo() {
     usarWebSearch = localStorage.getItem('jarvis_websearch_' + currentUser) !== 'false';
     confirmarMemoria = localStorage.getItem('jarvis_confirm_mem_' + currentUser) === 'true';
     vozAtivada = localStorage.getItem('jarvis_voz') !== 'false';
+    vozSelecionada = localStorage.getItem('jarvis_voice_' + currentUser) || '';
+    vozPitch = parseFloat(localStorage.getItem('jarvis_pitch_' + currentUser) || '0.75');
+    vozRate = parseFloat(localStorage.getItem('jarvis_rate_' + currentUser) || '1.05');
     atualizarTextoBotaoVoz();
+    popularVozes();
 
     const theme = localStorage.getItem('jarvis_theme') || 'dark';
     document.documentElement.setAttribute('data-theme', theme);
@@ -585,6 +620,11 @@ REGRAS DE RESPOSTA (obrigatórias):
 - Use Markdown apenas quando ajudar a clareza (negrito, código).
 - Você tem acesso a busca na web (tool browser_search). Use-a somente quando a informação for atual ou você não souber.
 
+PROIBIDO (muito importante):
+- NUNCA mostre raciocínio, pensamento interno, cadeia de pensamento, "thinking", "reasoning", "let me think", "analisando", "passo a passo" ou qualquer texto antes da resposta final.
+- NUNCA use tags como <think>, <reasoning>, [thinking], ou similares.
+- A resposta deve conter SOMENTE o conteúdo final destinado ao usuário. Nada de processo mental.
+
 MEMÓRIA AUTOMÁTICA:
 - Se o usuário pedir explicitamente para lembrar/guardar/memorizar algo, ou se a informação for pessoal e claramente útil para lembrar depois (preferências, dados pessoais, projetos, rotinas), adicione no FINAL da sua resposta (e somente no final) a tag:
 [[LEMBRAR: fato conciso aqui]]
@@ -690,6 +730,9 @@ window.abrirConfig = () => {
     document.getElementById('cfg-model').value = modeloPadrao;
     document.getElementById('cfg-websearch').value = String(usarWebSearch);
     document.getElementById('cfg-confirm-mem').value = String(confirmarMemoria);
+    document.getElementById('cfg-pitch').value = String(vozPitch);
+    document.getElementById('cfg-rate').value = String(vozRate);
+    popularVozes();
     document.getElementById('overlay-config').style.display = 'block';
     setTimeout(() => document.getElementById('painel-config').style.right = '0', 10);
     fecharMenu();
@@ -703,10 +746,16 @@ window.salvarConfig = () => {
     modeloPadrao = document.getElementById('cfg-model').value;
     usarWebSearch = document.getElementById('cfg-websearch').value === 'true';
     confirmarMemoria = document.getElementById('cfg-confirm-mem').value === 'true';
+    vozSelecionada = document.getElementById('cfg-voice').value;
+    vozPitch = parseFloat(document.getElementById('cfg-pitch').value);
+    vozRate = parseFloat(document.getElementById('cfg-rate').value);
     localStorage.setItem('jarvis_apikey_' + currentUser, apiKey);
     localStorage.setItem('jarvis_model_' + currentUser, modeloPadrao);
     localStorage.setItem('jarvis_websearch_' + currentUser, String(usarWebSearch));
     localStorage.setItem('jarvis_confirm_mem_' + currentUser, String(confirmarMemoria));
+    localStorage.setItem('jarvis_voice_' + currentUser, vozSelecionada);
+    localStorage.setItem('jarvis_pitch_' + currentUser, String(vozPitch));
+    localStorage.setItem('jarvis_rate_' + currentUser, String(vozRate));
     alert('Configurações salvas!');
     fecharConfig();
 };
@@ -850,7 +899,7 @@ window.previewArquivo = () => {
                 canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                 arquivoBase64 = canvas.toDataURL('image/jpeg', 0.7);
                 document.getElementById('preview-container').style.display = 'block';
-                document.getElementById('preview-container').innerText = '[imagem] pronta';
+                document.getElementById('preview-container').innerHTML = ICON_IMG + ' Imagem pronta';
             };
             img.src = e.target.result;
         };
@@ -861,7 +910,7 @@ window.previewArquivo = () => {
         reader.onload = e => {
             arquivoBase64 = e.target.result; // text content
             document.getElementById('preview-container').style.display = 'block';
-            document.getElementById('preview-container').innerText = `[arquivo] ${file.name}`;
+            document.getElementById('preview-container').innerHTML = ICON_FILE + ' ' + file.name;
         };
         reader.readAsText(file);
     }
@@ -887,11 +936,60 @@ window.toggleMic = () => {
     if (!recognition) return alert('Navegador não suporta reconhecimento de voz.');
     recognition.start();
 };
-function falarJarvis(texto) {
-    if (!vozAtivada || !('speechSynthesis' in window)) return;
-    const u = new SpeechSynthesisUtterance(texto.replace(/[*#`]/g, ''));
-    u.lang = 'pt-BR';
-    u.rate = 1.15;
+function popularVozes() {
+    const sel = document.getElementById('cfg-voice');
+    if (!sel || !('speechSynthesis' in window)) return;
+    const preencher = () => {
+        const voices = speechSynthesis.getVoices();
+        sel.innerHTML = '';
+        // Ordena: prioriza inglês britânico masculino, depois outras
+        const preferidas = ['en-GB', 'en-US', 'pt-BR', 'pt-PT'];
+        const sorted = [...voices].sort((a, b) => {
+            const score = (v) => {
+                let s = 0;
+                if (/male|daniel|george|arthur|thomas|james|ravi|google uk english male/i.test(v.name)) s += 10;
+                if (v.lang.startsWith('en-GB')) s += 8;
+                if (v.lang.startsWith('en-US')) s += 4;
+                if (v.lang.startsWith('pt')) s += 2;
+                return s;
+            };
+            return score(b) - score(a);
+        });
+        sorted.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.name;
+            opt.textContent = `${v.name} (${v.lang})`;
+            if (v.name === vozSelecionada) opt.selected = true;
+            sel.appendChild(opt);
+        });
+        if (!vozSelecionada && sorted.length) {
+            // auto-escolhe a melhor
+            const best = sorted[0];
+            vozSelecionada = best.name;
+            sel.value = best.name;
+        }
+    };
+    preencher();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = preencher;
+    }
+}
+
+window.testarVoz = () => {
+    const texto = 'At your service, sir. All systems are operational.';
+    falarJarvis(texto, true);
+};
+
+function falarJarvis(texto, forcar = false) {
+    if ((!vozAtivada && !forcar) || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(texto.replace(/[*#`_~\[\]]/g, ''));
+    const voices = speechSynthesis.getVoices();
+    const chosen = voices.find(v => v.name === vozSelecionada) || voices.find(v => /en-GB/i.test(v.lang) && /male|daniel|george/i.test(v.name)) || voices[0];
+    if (chosen) u.voice = chosen;
+    u.lang = chosen?.lang || 'en-GB';
+    u.pitch = vozPitch;
+    u.rate = vozRate;
     window.speechSynthesis.speak(u);
 }
 
@@ -944,7 +1042,7 @@ window.enviarMensagem = async () => {
 
 async function enviarParaAPI(imageBase64 = null) {
     if (!apiKey) {
-        alert('Configure sua chave da API Groq em Configurações (menu ☰).');
+        alert('Configure sua chave da API Groq em Configuracoes (menu).');
         return;
     }
     gerando = true;
@@ -1045,9 +1143,21 @@ async function enviarParaAPI(imageBase64 = null) {
         // finaliza
         document.getElementById(`wrap-${tempId}`)?.remove();
         if (fullText) {
+            // Remove raciocínio interno se o modelo vazar
+            let textoLimpo = fullText
+                .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+                .replace(/\[thinking\][\s\S]*?\[\/thinking\]/gi, '')
+                .replace(/\[reasoning\][\s\S]*?\[\/reasoning\]/gi, '')
+                .replace(/^[\s\S]*?(?=\n\n|$)/, (m) => {
+                    // se começar com frases de raciocínio comuns, tenta limpar blocos iniciais longos
+                    if (/^(let me think|thinking|raciocínio|analisando|passo a passo|okay,|hmm)/i.test(m.trim()) && m.length > 200) return '';
+                    return m;
+                });
+
             // Extrai e processa memória automática
-            const memoriaMatch = fullText.match(/\[\[LEMBRAR:\s*(.+?)\]\]/i);
-            let textoLimpo = fullText.replace(/\[\[LEMBRAR:\s*.+?\]\]/gi, '').trim();
+            const memoriaMatch = textoLimpo.match(/\[\[LEMBRAR:\s*(.+?)\]\]/i);
+            textoLimpo = textoLimpo.replace(/\[\[LEMBRAR:\s*.+?\]\]/gi, '').trim();
             if (memoriaMatch) {
                 const fato = memoriaMatch[1].trim();
                 if (fato) {
